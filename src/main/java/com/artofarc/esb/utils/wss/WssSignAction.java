@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021 Andre Karalus
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.artofarc.esb.utils.wss;
 
 import java.util.ArrayList;
@@ -9,7 +24,6 @@ import javax.xml.transform.dom.DOMSource;
 import org.apache.wss4j.common.WSEncryptionPart;
 import org.apache.wss4j.common.crypto.Crypto;
 import org.apache.wss4j.common.crypto.CryptoFactory;
-import org.apache.wss4j.common.ext.WSSecurityException;
 import org.apache.wss4j.dom.WSConstants;
 import org.apache.wss4j.dom.engine.WSSConfig;
 import org.apache.wss4j.dom.message.WSSecHeader;
@@ -28,16 +42,18 @@ public class WssSignAction extends Action {
 	private final ArrayList<WSEncryptionPart> parts = new ArrayList<>();
 	private final Crypto crypto;
 
-	public WssSignAction(Properties properties) throws WSSecurityException {
-		user = properties.getProperty("com.artofarc.esb.utils.wss.privatekey.alias");
-		password = properties.getProperty("org.apache.ws.security.crypto.merlin.keystore.private.password");
-		String[] signatureParts = properties.getProperty("com.artofarc.esb.utils.wss.signatureparts").split(";");
+	public WssSignAction(ClassLoader classLoader, Properties properties) throws Exception {
+		WSSConfig.init();
+		Properties cryptoProps = new Properties();
+		cryptoProps.load(classLoader.getResourceAsStream(properties.getProperty("cryptoPropFile", "crypto.properties")));
+		crypto = CryptoFactory.getInstance(cryptoProps, classLoader, null);
+		user = properties.getProperty("privatekeyAlias", "${privatekeyAlias}");
+		password = cryptoProps.getProperty("org.apache.ws.security.crypto.merlin.keystore.private.password");
+		String[] signatureParts = properties.getProperty("signatureParts").split(";");
 		for (String signaturePart : signatureParts) {
 			String[] split = signaturePart.split(",");
 			parts.add(new WSEncryptionPart(split[0], split[1], ""));
 		}
-		WSSConfig.init();
-		crypto = CryptoFactory.getInstance(properties);
 	}
 
 	@Override

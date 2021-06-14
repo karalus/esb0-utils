@@ -32,13 +32,7 @@
 		<dependency>
 			<groupId>org.apache.wss4j</groupId>
 			<artifactId>wss4j-ws-security-dom</artifactId>
-			<version>2.2.3</version>
-			<exclusions>
-				<exclusion>
-					<groupId>net.sf.ehcache</groupId>
-					<artifactId>ehcache</artifactId>
-				</exclusion>
-			</exclusions>
+			<version>2.3.1</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -46,26 +40,12 @@
 		<dependency>
 			<groupId>org.apache.wss4j</groupId>
 			<artifactId>wss4j-ws-security-common</artifactId>
-			<version>2.2.3</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.apache.geronimo.javamail</groupId>
-					<artifactId>geronimo-javamail_1.4_mail</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>com.fasterxml.woodstox</groupId>
-					<artifactId>woodstox-core</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.jasypt</groupId>
-					<artifactId>jasypt</artifactId>
-				</exclusion>
-			</exclusions>
+			<version>2.3.1</version>
 			<scope>provided</scope>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.wss4j/wss4j-ws-security-stax <dependency> <groupId>org.apache.wss4j</groupId> <artifactId>wss4j-ws-security-stax</artifactId> 
-			<version>2.2.3</version> <scope>provided</scope> </dependency> -->
+			<version>2.3.1</version> <scope>provided</scope> </dependency> -->
 
 	</dependencies>
 	<build>
