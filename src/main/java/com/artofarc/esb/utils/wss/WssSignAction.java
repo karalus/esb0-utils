@@ -18,6 +18,7 @@ package com.artofarc.esb.utils.wss;
 import java.util.ArrayList;
 import java.util.Properties;
 
+import javax.xml.namespace.QName;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 
@@ -49,10 +50,10 @@ public class WssSignAction extends Action {
 		crypto = CryptoFactory.getInstance(cryptoProps, classLoader, null);
 		user = properties.getProperty("privatekeyAlias", "${privatekeyAlias}");
 		password = cryptoProps.getProperty("org.apache.ws.security.crypto.merlin.keystore.private.password");
-		String[] signatureParts = properties.getProperty("signatureParts").split(";");
+		String[] signatureParts = properties.getProperty("signatureParts").split(",");
 		for (String signaturePart : signatureParts) {
-			String[] split = signaturePart.split(",");
-			parts.add(new WSEncryptionPart(split[0], split[1], ""));
+			QName qName = QName.valueOf(signaturePart);
+			parts.add(new WSEncryptionPart(qName.getLocalPart(), qName.getNamespaceURI(), ""));
 		}
 	}
 
