@@ -17,23 +17,31 @@ package com.artofarc.esb.utils.fastinfoset;
 
 import java.util.Properties;
 
+import javax.xml.transform.sax.SAXSource;
+import javax.xml.xquery.XQItem;
+
+import org.xml.sax.XMLReader;
+
 import com.artofarc.esb.action.ExecutionException;
-import com.artofarc.esb.action.ForwardAction;
+import com.artofarc.esb.action.SAXAction;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.esb.resource.SchemaAwareFISerializerFactory;
 import com.artofarc.util.SchemaAwareFastInfosetSerializer;
+import com.artofarc.util.XMLFilterBase;
 
-public class FISerializerSetVocabularyAction extends ForwardAction {
+public class FISerializerSetVocabularyAction extends SAXAction {
 
 	private final String schemaArtifactURI;
+	private final Boolean ignoreWhitespace;
 
 	public FISerializerSetVocabularyAction(ClassLoader classLoader, Properties properties) {
 		schemaArtifactURI = properties.getProperty("schemaArtifactURI");
 		if (schemaArtifactURI == null) {
 			throw new IllegalArgumentException("Property schemaArtifactURI not found");
 		}
+		ignoreWhitespace = Boolean.valueOf(properties.getProperty("ignoreWhitespace"));
 	}
 
 	@Override
@@ -43,9 +51,19 @@ public class FISerializerSetVocabularyAction extends ForwardAction {
 		}
 		FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
 		FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
-		SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema());
+		SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
 		serializer.getFastInfosetSerializer().setExternalVocabulary(vocabulary);
 		return super.prepare(context, message, inPipeline);
+	}
+
+	@Override
+	protected SAXSource createSAXSource(Context context, ESBMessage message, XQItem item) throws Exception {
+		return new SAXSource(context.createNamespaceBeautifier(new SAXSource(new XQJFilter(item), null)), null);
+	}
+
+	@Override
+	protected XMLFilterBase createXMLFilter(Context context, ESBMessage message, XMLReader parent) throws Exception {
+		return context.createNamespaceBeautifier(new SAXSource(parent, null));
 	}
 
 }

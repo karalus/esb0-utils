@@ -72,6 +72,8 @@ public class FastInfosetTest extends AbstractESBTest {
 
 		Properties properties = new Properties();
 		properties.setProperty("schemaArtifactURI", "/example/example.wsdl");
+		properties.setProperty("ignoreWhitespace", "true");
+		properties.setProperty("beautify", "true");
 
 		@SuppressWarnings("unchecked")
 		Action action = new UnwrapSOAPAction(false, true, wsdlArtifact.getSchema(), WSDL4JUtil.getBinding(wsdlArtifact.getAllBindings(), null, null).getBindingOperations(), null, false);
