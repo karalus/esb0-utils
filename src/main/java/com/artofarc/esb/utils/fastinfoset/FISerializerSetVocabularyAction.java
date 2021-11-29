@@ -35,6 +35,7 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 
 	private final String schemaArtifactURI;
 	private final Boolean ignoreWhitespace;
+	private final boolean beautify;
 
 	public FISerializerSetVocabularyAction(ClassLoader classLoader, Properties properties) {
 		schemaArtifactURI = properties.getProperty("schemaArtifactURI");
@@ -42,6 +43,7 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 			throw new IllegalArgumentException("Property schemaArtifactURI not found");
 		}
 		ignoreWhitespace = Boolean.valueOf(properties.getProperty("ignoreWhitespace"));
+		beautify = Boolean.parseBoolean(properties.getProperty("beautify"));
 	}
 
 	@Override
@@ -58,12 +60,13 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 
 	@Override
 	protected SAXSource createSAXSource(Context context, ESBMessage message, XQItem item) throws Exception {
-		return new SAXSource(context.createNamespaceBeautifier(new SAXSource(new XQJFilter(item), null)), null);
+		SAXSource source = new SAXSource(new XQJFilter(item), null);
+		return beautify ? new SAXSource(context.createNamespaceBeautifier(source), null) : source;
 	}
 
 	@Override
 	protected XMLFilterBase createXMLFilter(Context context, ESBMessage message, XMLReader parent) throws Exception {
-		return context.createNamespaceBeautifier(new SAXSource(parent, null));
+		return beautify ? context.createNamespaceBeautifier(new SAXSource(parent, null)) : new XMLFilterBase(parent);
 	}
 
 }
