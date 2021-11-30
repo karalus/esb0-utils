@@ -16,6 +16,7 @@
 package com.artofarc.esb.utils.fastinfoset;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 
 import com.artofarc.esb.action.ExecutionException;
@@ -30,20 +31,34 @@ public class FIDeserializerSetVocabularyAction extends ForwardAction {
 
 	public FIDeserializerSetVocabularyAction(ClassLoader classLoader, Properties properties) {
 		schemaArtifactURI = properties.getProperty("schemaArtifactURI");
-		if (schemaArtifactURI == null) {
-			throw new IllegalArgumentException("Property schemaArtifactURI not found");
-		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
 		if (message.getSchema() == null) {
 			throw new ExecutionException(this, "Message has no schema assigned");
 		}
-		FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
-		FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
-		context.getFastInfosetDeserializer().setExternalVocabularies(Collections.singletonMap(vocabulary.URI, vocabulary));
+		String vocabularyURI = resolve(message, FastInfosetVocabulary.VOCABULARY_URI, true);
+		if (vocabularyURI == null) {
+			vocabularyURI = schemaArtifactURI;
+		}
+		if (vocabularyURI == null) {
+			throw new IllegalArgumentException("schemaArtifactURI not resolved");
+		}
+		@SuppressWarnings({ "rawtypes", "deprecation" })
+		Map externalVocabularies = context.getFastInfosetDeserializer().getExternalVocabularies();
+		if (externalVocabularies == null) {
+			context.getFastInfosetDeserializer().setExternalVocabularies(Collections.singletonMap(vocabularyURI, getVocabulary(context, vocabularyURI)));
+		} else if (!externalVocabularies.containsKey(vocabularyURI)) {
+			externalVocabularies.put(vocabularyURI, getVocabulary(context, vocabularyURI));
+		}
 		return super.prepare(context, message, inPipeline);
 	}
-	
+
+	private static FastInfosetVocabulary getVocabulary(Context context, String vocabularyURI) throws Exception {
+		FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
+		return resourceFactory.getResource(vocabularyURI);
+	}
+
 }

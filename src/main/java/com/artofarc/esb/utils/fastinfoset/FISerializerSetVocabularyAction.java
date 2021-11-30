@@ -55,6 +55,7 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 		FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
 		SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
 		serializer.getFastInfosetSerializer().setExternalVocabulary(vocabulary);
+		message.putHeader(FastInfosetVocabulary.VOCABULARY_URI, schemaArtifactURI);
 		return super.prepare(context, message, inPipeline);
 	}
 

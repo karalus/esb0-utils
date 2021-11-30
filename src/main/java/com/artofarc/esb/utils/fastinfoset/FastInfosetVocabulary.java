@@ -20,6 +20,8 @@ import org.jvnet.fastinfoset.Vocabulary;
 
 public class FastInfosetVocabulary extends ExternalVocabulary implements AutoCloseable {
 
+	final static String VOCABULARY_URI = "vocabularyURI";
+
 	public FastInfosetVocabulary(String URI, Vocabulary vocabulary) {
 		super(URI, vocabulary);
 	}
