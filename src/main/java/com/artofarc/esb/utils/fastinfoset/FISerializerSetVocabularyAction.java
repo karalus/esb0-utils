@@ -22,7 +22,6 @@ import javax.xml.xquery.XQItem;
 
 import org.xml.sax.XMLReader;
 
-import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.action.SAXAction;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
@@ -39,23 +38,19 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 
 	public FISerializerSetVocabularyAction(ClassLoader classLoader, Properties properties) {
 		schemaArtifactURI = properties.getProperty("schemaArtifactURI");
-		if (schemaArtifactURI == null) {
-			throw new IllegalArgumentException("Property schemaArtifactURI not found");
-		}
 		ignoreWhitespace = Boolean.valueOf(properties.getProperty("ignoreWhitespace"));
 		beautify = Boolean.parseBoolean(properties.getProperty("beautify"));
 	}
 
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
-		if (message.getSchema() == null) {
-			throw new ExecutionException(this, "Message has no schema assigned");
+		if (schemaArtifactURI != null) {
+			FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
+			FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
+			SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
+			serializer.getFastInfosetSerializer().setExternalVocabulary(vocabulary);
+			message.putHeader(FastInfosetVocabulary.VOCABULARY_URI, schemaArtifactURI);
 		}
-		FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
-		FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
-		SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
-		serializer.getFastInfosetSerializer().setExternalVocabulary(vocabulary);
-		message.putHeader(FastInfosetVocabulary.VOCABULARY_URI, schemaArtifactURI);
 		return super.prepare(context, message, inPipeline);
 	}
 
