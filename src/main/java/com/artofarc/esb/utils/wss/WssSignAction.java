@@ -20,36 +20,24 @@ import java.util.Properties;
 
 import javax.xml.namespace.QName;
 import javax.xml.transform.dom.DOMResult;
-import javax.xml.transform.dom.DOMSource;
 
 import org.apache.wss4j.common.WSEncryptionPart;
-import org.apache.wss4j.common.crypto.Crypto;
-import org.apache.wss4j.common.crypto.CryptoFactory;
 import org.apache.wss4j.dom.WSConstants;
-import org.apache.wss4j.dom.engine.WSSConfig;
 import org.apache.wss4j.dom.message.WSSecHeader;
 import org.apache.wss4j.dom.message.WSSecSignature;
 import org.w3c.dom.Document;
 
-import com.artofarc.esb.action.Action;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBMessage;
 
-public class WssSignAction extends Action {
+public class WssSignAction extends WssAction {
 
-	private final String user, password;
 	private final ArrayList<WSEncryptionPart> parts = new ArrayList<>();
-	private final Crypto crypto;
 
 	public WssSignAction(ClassLoader classLoader, Properties properties) throws Exception {
-		WSSConfig.init();
-		Properties cryptoProps = new Properties();
-		cryptoProps.load(classLoader.getResourceAsStream(properties.getProperty("cryptoPropFile", "crypto.properties")));
-		crypto = CryptoFactory.getInstance(cryptoProps, classLoader, null);
-		user = properties.getProperty("privatekeyAlias", "${privatekeyAlias}");
-		password = cryptoProps.getProperty("org.apache.ws.security.crypto.merlin.keystore.private.password");
+		super(classLoader, properties);
 		String[] signatureParts = properties.getProperty("signatureParts").split(",");
 		for (String signaturePart : signatureParts) {
 			QName qName = QName.valueOf(signaturePart);
@@ -72,18 +60,6 @@ public class WssSignAction extends Action {
 		Document document = builder.build(crypto);
 		message.reset(BodyType.DOM, document);
 		return new ExecutionContext(document);
-	}
-
-	@Override
-	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
-		if (nextActionIsPipelineStop) {
-			Document document = execContext.getResource();
-			if (message.isSink()) {
-				context.transformRaw(new DOMSource(document), message.getBodyAsSinkResult(context));
-			} else {
-				message.reset(BodyType.DOM, document);
-			}
-		}
 	}
 
 }
