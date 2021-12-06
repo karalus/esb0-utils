@@ -51,9 +51,10 @@ public class FastInfosetVocabularyFactory extends ResourceFactory<FastInfosetVoc
 	@SuppressWarnings("unchecked")
 	public static Vocabulary createVocabulary(XSSchemaSet schemaSet) throws ReflectiveOperationException {
 		SchemaProcessor schemaProcessor = new SchemaProcessor(Collections.emptyList(), true, false);
-		Constructor<XSVisitor> constructor = ReflectionUtils.findConstructor(schemaProcessor.getClass().getName() + "$InternalSchemaProcessor", schemaProcessor.getClass());
+		Class<?> cls = schemaProcessor.getClass();
+		Constructor<?> constructor = Class.forName(cls.getName() + "$InternalSchemaProcessor", true, cls.getClassLoader()).getDeclaredConstructor(cls);
 		constructor.setAccessible(true);
-		XSVisitor visitor = constructor.newInstance(schemaProcessor);
+		XSVisitor visitor = (XSVisitor) constructor.newInstance(schemaProcessor);
 		for (Iterator<XSSchema> iter = schemaSet.iterateSchema(); iter.hasNext();) {
 			iter.next().visit(visitor);
 		}
