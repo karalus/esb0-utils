@@ -45,10 +45,10 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
+		SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
 		if (schemaArtifactURI != null) {
 			FastInfosetVocabularyFactory resourceFactory = context.getGlobalContext().getResourceFactory(FastInfosetVocabularyFactory.class);
 			FastInfosetVocabulary vocabulary = resourceFactory.getResource(schemaArtifactURI);
-			SchemaAwareFastInfosetSerializer serializer = context.getResourceFactory(SchemaAwareFISerializerFactory.class).getResource(message.getSchema(), ignoreWhitespace);
 			serializer.getFastInfosetSerializer().setExternalVocabulary(vocabulary);
 			message.putHeader(FastInfosetVocabulary.VOCABULARY_URI, schemaArtifactURI);
 		}
