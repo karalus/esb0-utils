@@ -38,7 +38,8 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 
 	public FISerializerSetVocabularyAction(ClassLoader classLoader, Properties properties) {
 		schemaArtifactURI = properties.getProperty("schemaArtifactURI");
-		ignoreWhitespace = Boolean.valueOf(properties.getProperty("ignoreWhitespace"));
+		String property = properties.getProperty("ignoreWhitespace");
+		ignoreWhitespace = property != null ? Boolean.valueOf(property) : null;
 		beautify = Boolean.parseBoolean(properties.getProperty("beautify"));
 	}
 
