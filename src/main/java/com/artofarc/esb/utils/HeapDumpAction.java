@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021 Andre Karalus
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.artofarc.esb.utils;
 
 import java.io.File;
@@ -54,16 +69,30 @@ public class HeapDumpAction extends Action {
 			message.reset(BodyType.INPUT_STREAM, bos.getByteArrayInputStream());
 		} else {
 			File tempFileZIP = File.createTempFile("heap", ".zip");
-			tempFileZIP.deleteOnExit();
 			FileOutputStream fos = new FileOutputStream(tempFileZIP);
-			zipHeapDump(tempFileHprof, fos);
-			message.reset(BodyType.INPUT_STREAM, new FileInputStream(tempFileZIP));
+			try {
+				zipHeapDump(tempFileHprof, fos);
+			} catch (IOException e) {
+				tempFileZIP.delete();
+				throw e;
+			}
+			message.reset(BodyType.INPUT_STREAM, new FileInputStream(tempFileZIP) {
+
+				@Override
+				public void close() throws IOException {
+					try {
+						super.close();
+					} finally {
+						tempFileZIP.delete();
+					}
+				}
+			});
 		}
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, "application/zip");
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION, "filename=\"" + "heapdump.zip" + '"');
 	}
 
-	private final static void zipHeapDump(File tempFileHprof, OutputStream os) throws IOException {
+	private static void zipHeapDump(File tempFileHprof, OutputStream os) throws IOException {
 		try (FileInputStream fis = new FileInputStream(tempFileHprof); ZipOutputStream zos = new ZipOutputStream(os)) {
 			zos.putNextEntry(new ZipEntry("heap.hprof"));
 			IOUtils.copy(fis, zos);

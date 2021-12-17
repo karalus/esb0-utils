@@ -16,6 +16,7 @@
 package com.artofarc.esb.utils.wss;
 
 import java.security.cert.X509Certificate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 
@@ -40,9 +41,16 @@ import com.artofarc.esb.message.ESBMessage;
 public class WssVerifyAction extends WssAction implements CallbackHandler {
 
 	private final WSSecurityEngine secEngine = new WSSecurityEngine();
+	private final HashSet<String> dns = new HashSet<String>();
 
 	public WssVerifyAction(ClassLoader classLoader, Properties properties) throws Exception {
 		super(classLoader, properties);
+		String allowedDNs = properties.getProperty("allowedDNs");
+		if (allowedDNs != null) {
+			for (String allowedDN : allowedDNs.split(",")) {
+				dns.add(allowedDN);
+			}
+		}
 	}
 
 	@Override
@@ -69,7 +77,11 @@ public class WssVerifyAction extends WssAction implements CallbackHandler {
 			throw new ExecutionException(this, "Message not signed");
 		} else {
 			X509Certificate certificate = (X509Certificate) results.get(0).get(WSSecurityEngineResult.TAG_X509_CERTIFICATE);
-			logger.info("Certificate DN: " + certificate.getSubjectX500Principal().getName());
+			String dn = certificate.getSubjectX500Principal().getName();
+			logger.info("Certificate DN: " + dn);
+			if (dns.size() > 0 && !dns.contains(dn)) {
+				throw new ExecutionException(this, "Certificate DN not allowed: " + dn);
+			}
 		}
 		message.reset(BodyType.DOM, domResult.getNode());
 		return new ExecutionContext(domResult.getNode());

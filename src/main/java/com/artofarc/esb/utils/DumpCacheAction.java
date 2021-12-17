@@ -39,7 +39,20 @@ public class DumpCacheAction extends Action {
 		@SuppressWarnings("unchecked")
 		LRUCacheWithExpirationFactory<Object, Object[]> factory = context.getGlobalContext().getResourceFactory(LRUCacheWithExpirationFactory.class);
 		if (factory.getResourceDescriptors().contains(cacheName)) {
-			return new ExecutionContext(factory.getResource(cacheName, null));
+			String method = message.getVariable(ESBConstants.HttpMethod);
+			switch (method) {
+			case "GET":
+				return new ExecutionContext(factory.getResource(cacheName));
+			case "DELETE":
+				factory.removeResource(cacheName).clear();
+				return new ExecutionContext("cache removed: " + cacheName);
+			case "PURGE":
+				factory.getResource(cacheName).clear();
+				return new ExecutionContext("cache purged: " + cacheName);
+			default:
+				message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+				return new ExecutionContext("method not allowed: " + method);
+			}
 		} else {
 			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NOT_FOUND);
 			return new ExecutionContext("cache not found: " + cacheName);
