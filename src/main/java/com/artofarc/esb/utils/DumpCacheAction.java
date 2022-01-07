@@ -39,7 +39,7 @@ public class DumpCacheAction extends Action {
 		@SuppressWarnings("unchecked")
 		LRUCacheWithExpirationFactory<Object, Object[]> factory = context.getGlobalContext().getResourceFactory(LRUCacheWithExpirationFactory.class);
 		if (factory.getResourceDescriptors().contains(cacheName)) {
-			String method = message.getVariable(ESBConstants.HttpMethod);
+			String method = message.getVariable(ESBConstants.HttpMethod, "null");
 			switch (method) {
 			case "GET":
 				return new ExecutionContext(factory.getResource(cacheName));

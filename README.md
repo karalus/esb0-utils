@@ -12,8 +12,9 @@ __Recommendation:__ Do not expose an esb0 directly to the internet. It is not se
 Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Infoset) even more by using external vocabularies.
 
 ### Miscellaneous ###
+- Browse JMS queue (convert messages to JSON), purge queue 
+- Dump contents of a cache as JSON, purge/delete cache
 - Create a Heapdump/Threaddump inside ESB0 to be downloaded
-- Dump contents of a cache, purge/delete cache
 - Convert a stream message into a [SwA](https://en.wikipedia.org/wiki/SOAP_with_Attachments) attachment
 - Download an artifact from esb0 including all recursive dependencies as a ZIP
 - Replace a BLOB in a JSON JDBC result with a CLOB taking code page and MIME type into account
