@@ -18,3 +18,4 @@ Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Inf
 - Convert a stream message into a [SwA](https://en.wikipedia.org/wiki/SOAP_with_Attachments) attachment
 - Download an artifact from esb0 including all recursive dependencies as a ZIP
 - Replace a BLOB in a JSON JDBC result with a CLOB taking code page and MIME type into account
+- Initiate reconnect for a JMS Connection (for monkey tests)
