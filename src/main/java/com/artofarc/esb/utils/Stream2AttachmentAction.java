@@ -18,7 +18,6 @@ package com.artofarc.esb.utils;
 import java.net.URLDecoder;
 
 import com.artofarc.esb.action.Action;
-import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.http.HttpConstants;
@@ -33,9 +32,6 @@ public class Stream2AttachmentAction extends Action {
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
-		if (!message.getBodyType().hasCharset()) {
-			throw new ExecutionException(this, "Expected binary, got " + message.getBodyType());
-		}
 		String contentType = message.getHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE);
 		String contentDisposition = message.getHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION);
 		// https://www.rfc-editor.org/rfc/rfc5987
@@ -48,9 +44,6 @@ public class Stream2AttachmentAction extends Action {
 			filename = URLDecoder.decode(filename.substring(i + 1), enc);
 		} else {
 			filename = HttpConstants.getValueFromHttpHeader(contentDisposition, "filename=");
-			if (filename != null) {
-				filename = filename.substring(1, filename.length() - 1);
-			}
 		}
 		message.addAttachment(null, contentType, message.getBodyAsByteArray(context), filename);
 		message.clearHeaders();
