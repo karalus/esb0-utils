@@ -83,14 +83,16 @@ public class BrowseQueueAction extends Action {
 		String method = message.getVariable(ESBConstants.HttpMethod, "null");
 		switch (method) {
 		case "GET":
+			String skipMessages = message.getVariable("skipMessages");
+			String maxMessages = message.getVariable("maxMessages");
 			try (QueueBrowser browser = jmsSession.getSession().createBrowser(jmsSession.createQueue(queueName), messageSelector)) {
 				if (message.isSink()) {
 					try (JsonGenerator jsonGenerator = message.getBodyAsJsonGenerator()) {
-						new JsonFormatter(jsonGenerator, browser);
+						new JsonFormatter(jsonGenerator, browser, skipMessages, maxMessages);
 					}
 				} else {
 					JsonValueGenerator jsonValueGenerator = new JsonValueGenerator();
-					new JsonFormatter(jsonValueGenerator, browser);
+					new JsonFormatter(jsonValueGenerator, browser, skipMessages, maxMessages);
 					message.reset(BodyType.JSON_VALUE, jsonValueGenerator.getJsonValue());
 				}
 			}
@@ -115,11 +117,21 @@ public class BrowseQueueAction extends Action {
 	class JsonFormatter {
 		final GregorianCalendar timestamp = new GregorianCalendar();
 
-		JsonFormatter(JsonGenerator jsonGenerator, QueueBrowser browser) throws Exception {
+		JsonFormatter(JsonGenerator jsonGenerator, QueueBrowser browser, String skipMessages, String maxMessages) throws Exception {
 			jsonGenerator.writeStartArray();
+			int skip = skipMessages != null ? Integer.parseInt(skipMessages) : 0 ;
+			int max = maxMessages != null ? Integer.parseInt(maxMessages) : Integer.MAX_VALUE;
 			@SuppressWarnings("unchecked")
 			Enumeration<? extends Message> enumeration = browser.getEnumeration();
 			while (enumeration.hasMoreElements()) {
+				if (skip > 0) {
+					enumeration.nextElement();
+					--skip;
+					continue;
+				}
+				if (--max < 0) {
+					break;
+				}
 				writeJson(jsonGenerator, enumeration.nextElement());
 			}
 			jsonGenerator.writeEnd();
