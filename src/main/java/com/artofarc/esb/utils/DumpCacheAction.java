@@ -17,6 +17,11 @@ package com.artofarc.esb.utils;
 
 import javax.json.stream.JsonGenerator;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xquery.XQItem;
+
+import org.w3c.dom.Node;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.context.Context;
@@ -28,6 +33,7 @@ import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.esb.resource.LRUCacheWithExpirationFactory;
 import com.artofarc.util.JsonValueGenerator;
 import com.artofarc.util.ReflectionUtils;
+import com.artofarc.util.StringBuilderWriter;
 
 public class DumpCacheAction extends Action {
 
@@ -72,17 +78,17 @@ public class DumpCacheAction extends Action {
 			LRUCacheWithExpirationFactory<Object, Object[]>.Cache cache = execContext.getResource();
 			if (message.isSink()) {
 				try (JsonGenerator jsonGenerator = message.getBodyAsJsonGenerator()) {
-					writeJson(jsonGenerator, cache);
+					writeJson(context, jsonGenerator, cache);
 				}
 			} else {
 				JsonValueGenerator jsonValueGenerator = new JsonValueGenerator();
-				writeJson(jsonValueGenerator, cache);
+				writeJson(context, jsonValueGenerator, cache);
 				message.reset(BodyType.JSON_VALUE, jsonValueGenerator.getJsonValue());
 			}
 		}
 	}
 
-	public static void writeJson(JsonGenerator jsonGenerator, LRUCacheWithExpirationFactory<Object, Object[]>.Cache cache) {
+	public static void writeJson(Context context, JsonGenerator jsonGenerator, LRUCacheWithExpirationFactory<Object, Object[]>.Cache cache) throws Exception {
 		jsonGenerator.writeStartObject();
 		for (Object expiration : cache.getExpirations()) {
 			// TODO: Use better API
@@ -91,11 +97,11 @@ public class DumpCacheAction extends Action {
 			if (values != null) {
 				jsonGenerator.writeKey(key);
 				if (values.length == 1) {
-					writeJson(jsonGenerator, values[0]);
+					writeJson(context, jsonGenerator, values[0]);
 				} else {
 					jsonGenerator.writeStartArray();
 					for (Object value : values) {
-						writeJson(jsonGenerator, value);
+						writeJson(context, jsonGenerator, value);
 					}
 					jsonGenerator.writeEnd();
 				}
@@ -104,9 +110,20 @@ public class DumpCacheAction extends Action {
 		jsonGenerator.writeEnd();
 	}
 
-	public static void writeJson(JsonGenerator jsonGenerator, Object value) {
+	public static void writeJson(Context context, JsonGenerator jsonGenerator, Object value) throws Exception {
 		if (value instanceof Number) {
 			jsonGenerator.write(((Number) value).longValue());
+		} else if (value instanceof byte[]) {
+			jsonGenerator.write(new String((byte[]) value, ESBMessage.CHARSET_DEFAULT));
+		} else if (value instanceof XQItem) {
+			XQItem xqItem = (XQItem) value;
+			StringBuilderWriter sw = new StringBuilderWriter();
+			xqItem.writeItem(sw, null);
+			jsonGenerator.write(sw.toString());
+		} else if (value instanceof Node) {
+			StringBuilderWriter sw = new StringBuilderWriter();
+			context.transform(new DOMSource((Node) value), new StreamResult(sw), null);
+			jsonGenerator.write(sw.toString());
 		} else {
 			jsonGenerator.write(value.toString());
 		}
