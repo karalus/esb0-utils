@@ -32,6 +32,7 @@ public class Stream2AttachmentAction extends Action {
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
+		String cid = message.getHeader("Content-ID");
 		String contentType = message.getHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE);
 		String contentDisposition = message.getHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION);
 		// https://www.rfc-editor.org/rfc/rfc5987
@@ -45,7 +46,7 @@ public class Stream2AttachmentAction extends Action {
 		} else {
 			filename = HttpConstants.getValueFromHttpHeader(contentDisposition, "filename=");
 		}
-		message.addAttachment(null, contentType, message.getBodyAsByteArray(context), filename);
+		message.addAttachment(cid, contentType, message.getBodyAsByteArray(context), filename);
 		message.clearHeaders();
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, HttpConstants.HTTP_HEADER_CONTENT_TYPE_JSON);
 		message.reset(BodyType.STRING, "{\"contentType\":\"" + contentType + "\",\"filename\":\"" + filename + "\"}");
