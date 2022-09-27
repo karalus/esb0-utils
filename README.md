@@ -16,10 +16,10 @@ Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Inf
 - Dump contents of a cache as JSON, purge/delete cache
 - Create a Heapdump/Threaddump inside ESB0 to be downloaded
 - Convert a stream message into a [SwA](https://en.wikipedia.org/wiki/SOAP_with_Attachments) attachment
-- Download an artifact from esb0 including all recursive dependencies as a ZIP
+- Download an artifact from esb0 including all transitive dependencies as a ZIP
 - Replace a BLOB in a JSON JDBC result with a CLOB taking code page and MIME type into account
 - Initiate reconnect for a JMS Connection (for monkey tests)
-- HTTP check alive test for JBoss Cluster setup with APache mod_cluster
+- HTTP check alive test for JBoss Cluster setup with Apache mod_cluster
 - Get state of JMSConnections in order to detect outages
 - Get state of all JMSConsumers
- 
+- Provide rudimentary MBean API support (get & set attributes, list all attributes, invoke operations) via JSON. Can be used in a (admin) REST service.

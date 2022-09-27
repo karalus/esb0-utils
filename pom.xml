@@ -46,6 +46,18 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
+		    <groupId>jakarta.json.bind</groupId>
+		    <artifactId>jakarta.json.bind-api</artifactId>
+		    <version>1.0.2</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+		    <groupId>org.eclipse</groupId>
+		    <artifactId>yasson</artifactId>
+		    <version>1.0.8</version>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>net.sf.saxon</groupId>
 			<artifactId>Saxon-HE</artifactId>
 			<version>9.9.1-8</version>
