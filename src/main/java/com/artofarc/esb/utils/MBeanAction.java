@@ -17,27 +17,19 @@ package com.artofarc.esb.utils;
 
 import java.io.StringReader;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Optional;
 
-import javax.json.JsonNumber;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
-import javax.json.JsonString;
 import javax.json.JsonValue;
-import javax.json.bind.Jsonb;
-import javax.json.bind.JsonbBuilder;
-import javax.json.bind.JsonbConfig;
+import javax.json.bind.*;
 import javax.json.bind.adapter.JsonbAdapter;
-import javax.management.Attribute;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanInfo;
-import javax.management.MBeanOperationInfo;
-import javax.management.MBeanParameterInfo;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
+import javax.management.*;
 import javax.management.openmbean.CompositeData;
-import javax.servlet.http.HttpServletResponse;
+import static javax.servlet.http.HttpServletResponse.*;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.action.ExecutionException;
@@ -56,6 +48,7 @@ public class MBeanAction extends Action {
 		@Override
 		public JsonObject adaptToJson(CompositeData cd) {
 			JsonObjectBuilder builder = JSON_BUILDER_FACTORY.createObjectBuilder();
+			builder.add("$type", cd.getCompositeType().getTypeName());
 			for (String key : cd.getCompositeType().keySet()) {
 				String json = JSONB.toJson(cd.get(key));
 				try (JsonReader jsonReader = JSON_READER_FACTORY.createReader(new StringReader(json))) {
@@ -80,7 +73,7 @@ public class MBeanAction extends Action {
 		message.clearHeaders();
 		String name = message.getVariable("objectName");
 		if (name == null) {
-			throw new ExecutionException(this, "objectName not set");
+			throw httpError(message, SC_BAD_REQUEST, "objectName not set", null);
 		}
 		ObjectName objectName = new ObjectName(name);
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -88,8 +81,7 @@ public class MBeanAction extends Action {
 		try {
 			mBeanInfo = mbeanServer.getMBeanInfo(objectName);
 		} catch (InstanceNotFoundException e) {
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NOT_FOUND);
-			throw new ExecutionException(this, name);
+			throw httpError(message, SC_NOT_FOUND, name, null);
 		}
 		String attribute = message.getVariable("attribute");
 		String method = message.getVariable(ESBConstants.HttpMethod, "null");
@@ -99,76 +91,82 @@ public class MBeanAction extends Action {
 			if (attribute != null) {
 				object = mbeanServer.getAttribute(objectName, attribute);
 			} else {
-				String[] attributeNames = Arrays.asList(mBeanInfo.getAttributes()).stream().map(a -> a.getName()).toArray(String[]::new);
+				String[] attributeNames = Arrays.stream(mBeanInfo.getAttributes()).map(a -> a.getName()).toArray(String[]::new);
 				object = mbeanServer.getAttributes(objectName, attributeNames);
 			}
 			returnResult(message, object, "");
 			break;
 		case "PUT":
-			if (attribute == null) {
-				throw new ExecutionException(this, "attribute not set");
+			Optional<MBeanAttributeInfo> optional = Arrays.stream(mBeanInfo.getAttributes()).filter(a -> a.getName().equals(attribute)).findAny();
+			if (!optional.isPresent()) {
+				throw httpError(message, SC_BAD_REQUEST, name + " has no attribute " + attribute, null);
 			}
-			try (JsonReader jsonReader = JSON_READER_FACTORY.createReader(message.getBodyAsReader(context))) {
-				JsonValue jsonValue = jsonReader.readValue();
-				mbeanServer.setAttribute(objectName, new Attribute(attribute, convert(jsonValue, "")));
-			}
+			Object value = JSONB.fromJson(message.getBodyAsString(context), classForName(optional.get().getType()));
+			mbeanServer.setAttribute(objectName, new Attribute(attribute, value));
 			returnResult(message, null, "void");
 			break;
 		case "POST":
-			String operation = message.getVariable("operation");
-			if (operation == null) {
-				throw new ExecutionException(this, "operation not set");
-			}
 			try (JsonReader jsonReader = JSON_READER_FACTORY.createReader(message.getBodyAsReader(context))) {
 				JsonObject jsonObject = jsonReader.readObject();
+				String operation = jsonObject.getString("operation", null);
+				int paramCount = jsonObject.size() - 1;
+				String values[] = new String[paramCount];
+				for (int i = 0; i < paramCount; ++i) {
+					JsonValue jsonValue = jsonObject.get("p" + i);
+					if (jsonValue == null) {
+						throw httpError(message, SC_BAD_REQUEST, "missing parameter p" + i, null);
+					}
+					values[i] = jsonValue.toString();
+				}
+				Object params[] = new Object[paramCount];
+				String types[] = new String[paramCount];
+				JsonbException lastException = null;
 				for (MBeanOperationInfo operationInfo : mBeanInfo.getOperations()) {
-					// TODO: No polymorphism, yet
-					if (operation.equals(operationInfo.getName())) {
-						MBeanParameterInfo[] signature = operationInfo.getSignature();
-						Object params[] = new Object[signature.length];
-						String types[] = new String[signature.length];
-						for (int i = 0; i < signature.length; ++i) {
-							params[i] = convert(jsonObject.get("p" + (i + 1)), types[i] = signature[i].getType());
+					MBeanParameterInfo[] signature = operationInfo.getSignature();
+					if (signature.length == paramCount && operationInfo.getName().equals(operation)) {
+						try {
+							for (int i = 0; i < paramCount; ++i) {
+								params[i] = JSONB.fromJson(values[i], classForName(types[i] = signature[i].getType()));
+							}
+						} catch (JsonbException e) {
+							lastException = e;
+							continue;
 						}
 						Object result = mbeanServer.invoke(objectName, operation, params, types);
 						returnResult(message, result, operationInfo.getReturnType());
 						return;
 					}
 				}
-				message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NOT_FOUND);
-				throw new ExecutionException(this, name + " has no operation " + operation);
+				if (lastException != null) {
+					throw httpError(message, SC_BAD_REQUEST, "parameters do not match", lastException);
+				} else {
+					throw httpError(message, SC_NOT_FOUND, name + " has no operation " + operation, null);
+				}
 			}
 		default:
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-			throw new ExecutionException(this, method);
+			throw httpError(message, SC_METHOD_NOT_ALLOWED, method, null);
 		}
 	}
 
-	private Object convert(JsonValue jsonValue, String type) throws ExecutionException {
-		if (jsonValue == null) {
-			return null;
+	private static Class<?> classForName(String name) throws Exception {
+		try {
+//			return ReflectionUtils.getPrimitiveClass(name);
+			Method method = Class.class.getDeclaredMethod("getPrimitiveClass", String.class);
+			method.setAccessible(true);
+			return (Class<?>) method.invoke(null, name);
+		} catch (ReflectiveOperationException e) {
 		}
-		switch (jsonValue.getValueType()) {
-		case TRUE:
-			return Boolean.TRUE;
-		case FALSE:
-			return Boolean.FALSE;
-		case NUMBER:
-			JsonNumber jsonNumber = (JsonNumber) jsonValue;
-			// TODO: short, BigInteger, BigDecimal, ...
-			return type.endsWith("ong") ? jsonNumber.longValueExact() : jsonNumber.intValueExact();
-		case STRING:
-			return ((JsonString) jsonValue).getString();
-		case NULL:
-			return null;
-		default:
-			throw new ExecutionException(this, "Cannot convert JSON type " + jsonValue.getValueType());
-		}
+		return Class.forName(name);
+	}
+
+	private ExecutionException httpError(ESBMessage esbMessage, int statusCode, String message, Throwable cause) {
+		esbMessage.putVariable(ESBConstants.HttpResponseCode, statusCode);
+		return new ExecutionException(this, message, cause);
 	}
 
 	private void returnResult(ESBMessage message, Object result, String type) throws Exception {
 		if (type.endsWith("oid")) {
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
+			message.putVariable(ESBConstants.HttpResponseCode, SC_NO_CONTENT);
 			message.reset(BodyType.INVALID, null);
 		} else {
 			if (message.isSink()) {
