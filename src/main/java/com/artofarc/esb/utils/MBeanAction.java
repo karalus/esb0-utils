@@ -128,13 +128,12 @@ public class MBeanAction extends Action {
 							for (int i = 0; i < paramCount; ++i) {
 								params[i] = JSONB.fromJson(values[i], classForName(types[i] = signature[i].getType()));
 							}
+							Object result = mbeanServer.invoke(objectName, operation, params, types);
+							returnResult(message, result, operationInfo.getReturnType());
+							return;
 						} catch (JsonbException e) {
 							lastException = e;
-							continue;
 						}
-						Object result = mbeanServer.invoke(objectName, operation, params, types);
-						returnResult(message, result, operationInfo.getReturnType());
-						return;
 					}
 				}
 				if (lastException != null) {
@@ -149,8 +148,8 @@ public class MBeanAction extends Action {
 	}
 
 	private static Class<?> classForName(String name) throws Exception {
+//		return com.artofarc.util.ReflectionUtils.classForName(name);
 		try {
-//			return ReflectionUtils.getPrimitiveClass(name);
 			Method method = Class.class.getDeclaredMethod("getPrimitiveClass", String.class);
 			method.setAccessible(true);
 			return (Class<?>) method.invoke(null, name);

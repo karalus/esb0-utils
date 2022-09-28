@@ -40,17 +40,19 @@ import com.artofarc.util.IOUtils;
 public class HeapDumpAction extends Action {
 
 	private final boolean inVM, doGC;
-	
+	private final String fileName;
+
 	public HeapDumpAction(ClassLoader classLoader, Properties properties) {
 		_pipelineStop = true;
 		inVM = Boolean.parseBoolean(properties.getProperty("inVM", "true"));
 		doGC = Boolean.parseBoolean(properties.getProperty("doGC", "true"));
+		fileName = properties.getProperty("fileName", "heap");
 	}
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
 		message.clearHeaders();
-		File tempFileHprof = File.createTempFile("heap", ".hprof");
+		File tempFileHprof = File.createTempFile(fileName, ".hprof");
 		tempFileHprof.delete();
 		
 		if (doGC) {
@@ -58,17 +60,17 @@ public class HeapDumpAction extends Action {
 		}
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 		mbeanServer.invoke(
-		         new ObjectName("com.sun.management:type=HotSpotDiagnostic"),
-		         "dumpHeap",
-		         new Object[] {tempFileHprof.getAbsolutePath(), true},
-		         new String[] {String.class.getName(), boolean.class.getName()});
+			new ObjectName("com.sun.management:type=HotSpotDiagnostic"),
+			"dumpHeap",
+			new Object[] {tempFileHprof.getAbsolutePath(), true},
+			new String[] {String.class.getName(), boolean.class.getName()});
 
 		if (inVM) {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			zipHeapDump(tempFileHprof, bos);
 			message.reset(BodyType.INPUT_STREAM, bos.getByteArrayInputStream());
 		} else {
-			File tempFileZIP = File.createTempFile("heap", ".zip");
+			File tempFileZIP = File.createTempFile(fileName, ".zip");
 			FileOutputStream fos = new FileOutputStream(tempFileZIP);
 			try {
 				zipHeapDump(tempFileHprof, fos);
@@ -92,9 +94,9 @@ public class HeapDumpAction extends Action {
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION, "filename=\"" + "heapdump.zip" + '"');
 	}
 
-	private static void zipHeapDump(File tempFileHprof, OutputStream os) throws IOException {
+	private void zipHeapDump(File tempFileHprof, OutputStream os) throws IOException {
 		try (FileInputStream fis = new FileInputStream(tempFileHprof); ZipOutputStream zos = new ZipOutputStream(os)) {
-			zos.putNextEntry(new ZipEntry("heap.hprof"));
+			zos.putNextEntry(new ZipEntry(fileName + ".hprof"));
 			IOUtils.copy(fis, zos);
 		} finally {
 			tempFileHprof.delete();
