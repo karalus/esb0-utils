@@ -53,7 +53,7 @@ public final class ICAP implements Closeable {
 
     private final String icapService;
 
-    private int stdPreviewSize;
+    private final int stdPreviewSize;
 
     private Map<String,String> responseMap;
 
@@ -92,7 +92,8 @@ public final class ICAP implements Closeable {
                 	String tempString = responseMap.get("Preview");
                     if (tempString != null){
                         stdPreviewSize=Integer.parseInt(tempString);
-                    };break;
+                        break;
+                    }
                 default: throw new ICAPException("Could not get preview size from server");
             }
         }
@@ -165,14 +166,14 @@ public final class ICAP implements Closeable {
             +resBody
             +Integer.toHexString(previewSize) +"\r\n";
 
-        sendString(requestBuffer);
+        sendString(requestBuffer, false);
 
         //Sending preview or, if smaller than previewSize, the whole file.
         byte[] chunk = new byte[previewSize];
 
         fileInStream.read(chunk);
         out.write(chunk);
-        sendString("\r\n");
+        sendString("\r\n", false);
         if (fileSize<=previewSize){
             sendString("0; ieof\r\n\r\n", true);
         }
@@ -207,9 +208,9 @@ public final class ICAP implements Closeable {
         if (fileSize > previewSize){
             byte[] buffer = new byte[STD_SEND_LENGTH];
             while ((fileInStream.read(buffer)) != -1) {
-                sendString(Integer.toHexString(buffer.length) +"\r\n");
+                sendString(Integer.toHexString(buffer.length) +"\r\n", false);
                 out.write(buffer);
-                sendString("\r\n");
+                sendString("\r\n", false);
             }
             //Closing file transfer.
             requestBuffer = "0\r\n\r\n";
@@ -327,15 +328,6 @@ public final class ICAP implements Closeable {
         }
 
         return headers;
-    }
-
-    /**
-     * Sends a String through the socket connection. Used for sending ICAP/HTTP headers.
-     * @param requestHeader
-     * @throws IOException
-     */
-    private void sendString(String requestHeader) throws IOException {
-        sendString(requestHeader, false);
     }
 
     /**
