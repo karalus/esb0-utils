@@ -27,20 +27,19 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 
 /**
  * @see https://github.com/Baekalfen/ICAP-avscan
  */
 public final class ICAP implements Closeable {
-    private static final Charset StandardCharsetsUTF8 = Charset.forName("UTF-8");
-    private static final int BUFFER_SIZE = 32 * 1024;
+    private static final Charset StandardCharsetsUTF8 = StandardCharsets.UTF_8;
+    private static final int BUFFER_SIZE = 8 * 1024;
     private static final int STD_RECEIVE_LENGTH = 8192;
     private static final int STD_SEND_LENGTH = 8192;
     private static final String VERSION   = "1.0";
-    private static final String USERAGENT = "IT-Kartellet ICAP Client/1.1";
+    private static final String USERAGENT = "ESB0 ICAP Client/1.1";
     private static final String ICAPTERMINATOR = "\r\n\r\n";
     private static final String HTTPTERMINATOR = "0\r\n\r\n";
 
@@ -48,14 +47,17 @@ public final class ICAP implements Closeable {
     private final int port;
 
     private final Socket client;
-    private final DataOutputStream out;
-    private final DataInputStream in;
+    private final OutputStream out;
+    private final InputStream in;
 
     private final String icapService;
 
     private final int stdPreviewSize;
 
-    private Map<String,String> responseMap;
+    private HashMap<String,String> responseMap;
+    private String responseText;
+    private long optionsExpiration = Long.MAX_VALUE;
+    private long lastUse;
 
     /**
      * Initializes the socket connection and IO streams. It asks the server for the available options and
@@ -72,34 +74,15 @@ public final class ICAP implements Closeable {
         this.port = port;
         //Initialize connection
         client = new Socket(serverIP, port);
+        client.setKeepAlive(true);
 
         //Openening out stream
-        OutputStream outToServer = client.getOutputStream();
-        out = new DataOutputStream(new BufferedOutputStream(outToServer, BUFFER_SIZE));
+        out = new BufferedOutputStream(client.getOutputStream(), BUFFER_SIZE);
 
         //Openening in stream
-        InputStream inFromServer = client.getInputStream();
-        in = new DataInputStream(inFromServer);
+        in = client.getInputStream();
 
-        String parseMe = getOptions();
-        responseMap = parseHeader(parseMe);
-
-        if (responseMap.get("StatusCode") != null){
-            int status = Integer.parseInt(responseMap.get("StatusCode"));
-
-            switch (status){
-                case 200:
-                	String tempString = responseMap.get("Preview");
-                    if (tempString != null){
-                        stdPreviewSize=Integer.parseInt(tempString);
-                        break;
-                    }
-                default: throw new ICAPException("Could not get preview size from server");
-            }
-        }
-        else{
-            throw new ICAPException("Could not get options from server");
-        }
+        stdPreviewSize = getOptions();
     }
 
     /**
@@ -118,14 +101,13 @@ public final class ICAP implements Closeable {
         port = p;
         //Initialize connection
         client = new Socket(serverIP, port);
+        client.setKeepAlive(true);
 
-        //Opening out stream
-        OutputStream outToServer = client.getOutputStream();
-        out = new DataOutputStream(outToServer);
+        //Openening out stream
+        out = new BufferedOutputStream(client.getOutputStream(), BUFFER_SIZE);
 
-        //Opening in stream
-        InputStream inFromServer = client.getInputStream();
-        in = new DataInputStream(inFromServer);
+        //Openening in stream
+        in = client.getInputStream();
 
         stdPreviewSize = previewSize;
     }
@@ -138,26 +120,26 @@ public final class ICAP implements Closeable {
      */
     public boolean scanFile(String filename) throws IOException,ICAPException{
         File file = new File(filename);
-        try(InputStream inputStream = new FileInputStream(file)) {
-            return scanFile(file.getName(), inputStream, file.length());
+        try(InputStream inputStream = new FileInputStream(filename)) {
+            return scanFile(file.getName(), inputStream);
         }
     }
 
-    public boolean scanFile(String filename, InputStream fileInStream, long fileSize) throws IOException,ICAPException{
-
+    public boolean scanFile(String filename, InputStream fileInStream) throws IOException,ICAPException{
         // First part of header
         String resHeader= "GET /" + URLEncoder.encode(filename, StandardCharsets.UTF_8.name()) + " HTTP/1.1\r\nHost: " + serverIP + ":" + port + "\r\n\r\n";
-        String resBody = resHeader + "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: "+fileSize+"\r\n\r\n";
+        String resBody = resHeader + "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n";
 
+        byte[] buffer = new byte[STD_SEND_LENGTH];
+        int len = fileInStream.read(buffer);
         int previewSize = stdPreviewSize;
-        if (fileSize < stdPreviewSize){
-            previewSize = (int) fileSize;
+        if (len < stdPreviewSize){
+            previewSize = len;
         }
 
         String requestBuffer =
             "RESPMOD icap://"+serverIP+"/"+icapService+" ICAP/"+VERSION+"\r\n"
             +"Host: "+serverIP+"\r\n"
-            +"Connection:  close\r\n"
             +"User-Agent: "+USERAGENT+"\r\n"
             +"Allow: 204\r\n"
             +"Preview: "+previewSize+"\r\n"
@@ -169,16 +151,13 @@ public final class ICAP implements Closeable {
         sendString(requestBuffer, false);
 
         //Sending preview or, if smaller than previewSize, the whole file.
-        byte[] chunk = new byte[previewSize];
-
-        fileInStream.read(chunk);
-        out.write(chunk);
+        out.write(buffer, 0, previewSize);
         sendString("\r\n", false);
-        if (fileSize<=previewSize){
+        if (len<=stdPreviewSize){
             sendString("0; ieof\r\n\r\n", true);
         }
         else if (previewSize != 0){
-            sendString("0\r\n\r\n", true);
+            sendString(HTTPTERMINATOR, true);
         }
 
         // Parse the response! It might not be "100 continue"
@@ -186,7 +165,7 @@ public final class ICAP implements Closeable {
         // otherwise it is a "go" for the rest of the file.
         int status;
 
-        if (fileSize>previewSize){
+        if (len>previewSize){
             String parseMe = getHeader(ICAPTERMINATOR);
             responseMap = parseHeader(parseMe);
 
@@ -196,29 +175,27 @@ public final class ICAP implements Closeable {
 
                 switch (status){
                     case 100: break; //Continue transfer
-                    case 200: return false;
+                    case 200: case 201: return false;
                     case 204: return true;
                     case 404: throw new ICAPException("404: ICAP Service not found");
                     default: throw new ICAPException("Server returned unknown status code:"+status);
                 }
             }
-        }
-
-        //Sending remaining part of file
-        if (fileSize > previewSize){
-            byte[] buffer = new byte[STD_SEND_LENGTH];
-            while ((fileInStream.read(buffer)) != -1) {
-                sendString(Integer.toHexString(buffer.length) +"\r\n", false);
-                out.write(buffer);
+            //Sending remaining part of file
+            len -= previewSize;
+            do {
+                sendString(Integer.toHexString(len) +"\r\n", false);
+                out.write(buffer, previewSize, len);
                 sendString("\r\n", false);
-            }
+                previewSize = 0;
+            } while ((len = fileInStream.read(buffer)) != -1);
             //Closing file transfer.
-            requestBuffer = "0\r\n\r\n";
-            sendString(requestBuffer, true);
+            sendString(HTTPTERMINATOR, true);
         }
 
         String response = getHeader(ICAPTERMINATOR);
         responseMap = parseHeader(response);
+        responseText = null;
 
         String tempString=responseMap.get("StatusCode");
         if (tempString != null){
@@ -226,14 +203,16 @@ public final class ICAP implements Closeable {
 
             if (status == 204){return true;} //Unmodified
 
-            if (status == 200){ //OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
+            if (status == 200 || status == 201){ //OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
                 response = getHeader(HTTPTERMINATOR);
-                int x = response.indexOf("<title>",0);
-                int y = response.indexOf("</title>",x);
-                String statusCode = response.substring(x+7,y);
+                int x = response.indexOf("</title>",0);
+                if (x >= 0) {
+                    int y = response.indexOf("</html>",x);
+                    responseText = response.substring(x+8,y);
 
-                if (statusCode.equals("ProxyAV: Access Denied")){
-                    return false;
+                    if (responseText.length() > 0){
+                        return false;
+                    }
                 }
             }
         }
@@ -246,7 +225,7 @@ public final class ICAP implements Closeable {
      * @throws IOException
      * @throws ICAPException
      */
-    private String getOptions() throws IOException, ICAPException{
+    private int getOptions() throws IOException, ICAPException{
         //Send OPTIONS header and receive response
         //Sending and recieving
         String requestHeader =
@@ -258,7 +237,28 @@ public final class ICAP implements Closeable {
 
         sendString(requestHeader, true);
 
-        return getHeader(ICAPTERMINATOR);
+        String parseMe = getHeader(ICAPTERMINATOR);
+        responseMap = parseHeader(parseMe);
+
+        if (responseMap.get("StatusCode") != null){
+            int status = Integer.parseInt(responseMap.get("StatusCode"));
+
+            switch (status){
+                case 200:
+                    String tempString = responseMap.get("Options-TTL");
+                    if (tempString != null) {
+                        optionsExpiration = System.nanoTime() + TimeUnit.SECONDS.toNanos(Integer.parseInt(tempString));
+                    }
+                    tempString = responseMap.get("Preview");
+                    if (tempString != null){
+                        return Integer.parseInt(tempString);
+                    }
+                default: throw new ICAPException("Could not get preview size from server");
+            }
+        }
+        else{
+            throw new ICAPException("Could not get options from server");
+        }
     }
 
     /**
@@ -275,11 +275,11 @@ public final class ICAP implements Closeable {
         int n;
         int offset=0;
         //STD_RECEIVE_LENGTH-offset is replaced by '1' to not receive the next (HTTP) header.
-        while((offset < STD_RECEIVE_LENGTH) && ((n = in.read(buffer, offset, 1)) != -1)) { // first part is to secure against DOS
+        while(offset < STD_RECEIVE_LENGTH && (n = in.read(buffer, offset, 1)) != -1) { // first part is to secure against DOS
             offset += n;
             if (offset>endofheader.length+13){ // 13 is the smallest possible message "ICAP/1.0 xxx "
-                byte[] lastBytes = Arrays.copyOfRange(buffer, offset-endofheader.length, offset);
-                if (Arrays.equals(endofheader,lastBytes)){
+                if (indexOf(buffer, endofheader, offset-endofheader.length, offset) >= 0) {
+                    lastUse = System.nanoTime();
                     return new String(buffer,0,offset, StandardCharsetsUTF8);
                 }
             }
@@ -287,13 +287,25 @@ public final class ICAP implements Closeable {
         throw new ICAPException("Error in getHeader() method");
     }
 
+	public static int indexOf(byte[] array, byte[] target, int i, int len) {
+		outer: for (; i < len - target.length + 1; i++) {
+			for (int j = 0; j < target.length; j++) {
+				if (array[i + j] != target[j]) {
+					continue outer;
+				}
+			}
+			return i;
+		}
+		return -1;
+	}
+
     /**
      * Given a raw response header as a String, it will parse through it and return a HashMap of the result
      * @param response A raw response header as a String.
      * @return HashMap of the key,value pairs of the response
      */
-    private Map<String,String> parseHeader(String response){
-        Map<String,String> headers = new HashMap<>();
+    private HashMap<String,String> parseHeader(String response){
+        HashMap<String,String> headers = new HashMap<>();
 
         /****SAMPLE:****
          * ICAP/1.0 204 Unmodified
@@ -345,13 +357,25 @@ public final class ICAP implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if (this.client != null) {
-            this.client.close();
+        if (client != null) {
+           client.close();
         }
     }
 
-	public Map<String, String> getResponseMap() {
-		return responseMap;
+	public String getISTag() throws ICAPException, IOException {
+		if (responseMap == null || System.nanoTime() > optionsExpiration) {
+			getOptions();
+		}
+		String ISTag = responseMap.get("ISTag");
+		return ISTag.substring(1, ISTag.length() - 1);
+	}
+
+	public String getResponseText() {
+		return responseText;
+	}
+
+	public long getIdleTime() {
+		return TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - lastUse);
 	}
 
 }

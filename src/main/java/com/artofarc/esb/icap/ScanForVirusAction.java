@@ -15,26 +15,28 @@
  */
 package com.artofarc.esb.icap;
 
-import java.util.Map;
 import java.util.Properties;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
+import com.artofarc.esb.http.HttpConstants;
 import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
 
 public class ScanForVirusAction extends Action {
 
 	private final ICAPConnectionData icapConnectionData;
-	private final Integer stdPreviewSize;
+	private final Integer stdPreviewSize, maxIdleTime;
 
 	public ScanForVirusAction(ClassLoader classLoader, Properties properties) {
 		_pipelineStop = true;
 		icapConnectionData = new ICAPConnectionData(properties.getProperty("ICAPRemoteHost"), properties.getProperty("ICAPRemotePort"), properties.getProperty("ICAPRemoteURI"));
 		String iCAPPreviewSize = properties.getProperty("ICAPPreviewSize");
 		stdPreviewSize = iCAPPreviewSize != null ? Integer.valueOf(iCAPPreviewSize) : null;
+		String iCAPMaxIdleTime = properties.getProperty("ICAPMaxIdleTime");
+		maxIdleTime = iCAPMaxIdleTime != null ? Integer.valueOf(iCAPMaxIdleTime) : null;
 	}
 
 	@Override
@@ -43,21 +45,23 @@ public class ScanForVirusAction extends Action {
 		if (filename == null) {
 			throw new ExecutionException(this, "filename must be set");
 		}
-		Long length = message.getByteLength();
-		if (length == null) {
-			// This should be avoided cause it might need a lot of memory, but we need the size
-			length = (long) message.getBodyAsByteArray(context).length;
-		}
+		String ISTag = message.getVariable("ISTag");
 		ICAPConnectionFactory resourceFactory = context.getResourceFactory(ICAPConnectionFactory.class);
 		ICAP icap = resourceFactory.getResource(icapConnectionData, stdPreviewSize);
+		if (maxIdleTime != null && icap.getIdleTime() > maxIdleTime) {
+			resourceFactory.close(icapConnectionData);
+			icap = resourceFactory.getResource(icapConnectionData, stdPreviewSize);
+		}
 		try {
-			boolean result = icap.scanFile(filename, message.getBodyAsInputStream(context), length);
-			message.putVariable("scanResult", result);
-			for (Map.Entry<String, String> entry : icap.getResponseMap().entrySet()) {
-				if (entry.getKey().startsWith("X-")) {
-					// e.g. X-Violations-Found, X-Infection-Found
-					message.putVariable("ICAP" + entry.getKey().substring(1), entry.getValue());
-				}
+			if (ISTag != null && ISTag.equals(icap.getISTag())) {
+				message.putVariable("scanResult", true);
+				message.reset(null, null);
+			} else {
+				boolean result = icap.scanFile(filename, message.getBodyAsInputStream(context));
+				message.reset(null, icap.getResponseText());
+				message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, HttpConstants.HTTP_HEADER_CONTENT_TYPE_TEXT);
+				message.putVariable("ISTag", icap.getISTag());
+				message.putVariable("scanResult", result);
 			}
 		} catch (Exception e) {
 			// Underlying socket connection might be corrupt
