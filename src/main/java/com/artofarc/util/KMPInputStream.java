@@ -15,10 +15,11 @@
  */
 package com.artofarc.util;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-public final class KMPInputStream extends InputStream {
+public final class KMPInputStream extends FilterInputStream {
 
 	public final static class Pattern {
 		private final byte[] pattern;
@@ -45,17 +46,16 @@ public final class KMPInputStream extends InputStream {
 		}
 	}
 
-	private final InputStream in;
-	private long pos;
-	private KMPInputStream.Pattern kmp;
+	private long pos, mark;
+	private Pattern kmp;
 	private int j;
 	private boolean found;
 
 	public KMPInputStream(InputStream inputStream) {
-		in = inputStream;
+		super(inputStream);
 	}
 
-	public void setPattern(KMPInputStream.Pattern pattern) {
+	public void setPattern(Pattern pattern) {
 		kmp = pattern;
 		j = 0;
 		found = false;
@@ -70,17 +70,12 @@ public final class KMPInputStream extends InputStream {
 	}
 
 	@Override
-	public void close() throws IOException {
-		in.close();
-	}
-
-	@Override
 	public int read() throws IOException {
 		final int c = in.read();
 		if (c >= 0) {
 			++pos;
 			if (kmp != null) {
-				while (j >= 0 && c != kmp.pattern[j]) {
+				while (j >= 0 && (byte) c != kmp.pattern[j]) {
 					j = kmp.prefixes[j];
 				}
 				if (found = (++j == kmp.pattern.length)) {
@@ -121,9 +116,22 @@ public final class KMPInputStream extends InputStream {
 			return 0;
 		}
 		long remaining = n;
-		while (read() >= 0 && --remaining > 0 && !found) {
-		}
+		while (read() >= 0 && --remaining > 0 && !found); // no body in this loop
 		return n - remaining;
+	}
+
+	@Override
+	public void mark(int readlimit) {
+		in.mark(readlimit);
+		mark = pos;
+	}
+
+	@Override
+	public void reset() throws IOException {
+		in.reset();
+		pos = mark;
+		j = 0;
+		found = false;
 	}
 
 }
