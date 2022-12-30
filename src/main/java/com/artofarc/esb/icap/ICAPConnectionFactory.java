@@ -19,15 +19,13 @@ import java.io.IOException;
 
 import com.artofarc.esb.resource.ResourceFactory;
 
-public class ICAPConnectionFactory extends ResourceFactory<ICAP, ICAPConnectionData, Integer, IOException> {
+public class ICAPConnectionFactory extends ResourceFactory<ICAP, ICAPConnectionData, ICAP.ScanEngine, IOException> {
 
 	@Override
-	protected ICAP createResource(ICAPConnectionData data, Integer previewSize) throws IOException {
-		if (previewSize != null) {
-			return new ICAP(data.getICAPRemoteHost(), data.getICAPRemotePort(), data.getICAPRemoteURI(), previewSize);
-		} else {
-			return new ICAP(data.getICAPRemoteHost(), data.getICAPRemotePort(), data.getICAPRemoteURI());
-		}
+	protected ICAP createResource(ICAPConnectionData data, ICAP.ScanEngine scanEngine) throws IOException {
+		ICAP icap = new ICAP(data.getICAPRemoteHost(), data.getICAPRemotePort(), data.getICAPRemoteURI());
+		icap.setScanEngine(scanEngine);
+		return icap;
 	}
 
 }

@@ -28,15 +28,15 @@ import com.artofarc.esb.message.ESBMessage;
 public class ScanForVirusAction extends Action {
 
 	private final ICAPConnectionData icapConnectionData;
-	private final Integer stdPreviewSize, maxIdleTime;
+	private final Integer maxIdleTime;
+	private final ICAP.ScanEngine scanEngine;
 
-	public ScanForVirusAction(ClassLoader classLoader, Properties properties) {
+	public ScanForVirusAction(ClassLoader classLoader, Properties properties) throws ReflectiveOperationException {
 		_pipelineStop = true;
 		icapConnectionData = new ICAPConnectionData(properties.getProperty("ICAPRemoteHost"), properties.getProperty("ICAPRemotePort"), properties.getProperty("ICAPRemoteURI"));
-		String iCAPPreviewSize = properties.getProperty("ICAPPreviewSize");
-		stdPreviewSize = iCAPPreviewSize != null ? Integer.valueOf(iCAPPreviewSize) : null;
 		String iCAPMaxIdleTime = properties.getProperty("ICAPMaxIdleTime");
 		maxIdleTime = iCAPMaxIdleTime != null ? Integer.valueOf(iCAPMaxIdleTime) : null;
+		scanEngine = (ICAP.ScanEngine) classLoader.loadClass(properties.getProperty("ICAPScanEngine", "com.artofarc.esb.icap.ICAP$ScanEngine")).newInstance();
 	}
 
 	@Override
@@ -47,10 +47,10 @@ public class ScanForVirusAction extends Action {
 		}
 		String ISTag = message.getVariable("ISTag");
 		ICAPConnectionFactory resourceFactory = context.getResourceFactory(ICAPConnectionFactory.class);
-		ICAP icap = resourceFactory.getResource(icapConnectionData, stdPreviewSize);
+		ICAP icap = resourceFactory.getResource(icapConnectionData, scanEngine);
 		if (maxIdleTime != null && icap.getIdleTime() > maxIdleTime) {
 			resourceFactory.close(icapConnectionData);
-			icap = resourceFactory.getResource(icapConnectionData, stdPreviewSize);
+			icap = resourceFactory.getResource(icapConnectionData, scanEngine);
 		}
 		try {
 			if (ISTag != null && ISTag.equals(icap.getISTag())) {

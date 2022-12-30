@@ -26,6 +26,7 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.artofarc.util.KMPInputStream;
@@ -56,10 +57,25 @@ public final class ICAP implements Closeable {
     private final int stdPreviewSize;
     private final byte[] recvBuffer = new byte[STD_RECEIVE_LENGTH];
 
-    private HashMap<String,String> responseMap;
+    private Map<String,String> responseMap;
     private String responseText;
     private long optionsExpiration = Long.MAX_VALUE;
     private long lastUse = Long.MAX_VALUE;
+    private ScanEngine scanEngine;
+
+    static class ScanEngine {
+    	public boolean isVirus(int status, Map<String, String> responseMap) {
+    		return status == 403 || responseMap.containsKey("X-Infection-Found");
+    	}
+
+    	public boolean isOk(int status) {
+    		return status == 200 || status == 204;
+    	}
+
+    	public String parseResponse(Map<String, String> responseMap, String response) {
+    		return responseMap.get("X-Virus-ID");
+    	}
+    }
 
     /**
      * Initializes the socket connection and IO streams. It asks the server for the available options and
@@ -112,7 +128,18 @@ public final class ICAP implements Closeable {
         stdPreviewSize = previewSize;
     }
 
-    /**
+    public ScanEngine getScanEngine() {
+    	if (scanEngine == null) {
+    		scanEngine = new ScanEngine();
+    	}
+		return scanEngine;
+	}
+
+	public void setScanEngine(ScanEngine scanEngine) {
+		this.scanEngine = scanEngine;
+	}
+
+	/**
      * Given a filepath, it will send the file to the server and return true,
      * if the server accepts the file. Visa-versa, false if the server rejects it.
      * @param filename Relative or absolute filepath to a file.
@@ -158,16 +185,20 @@ public final class ICAP implements Closeable {
             if (tempString != null){
                 int status = Integer.parseInt(tempString);
 
+                if (getScanEngine().isVirus(status, responseMap) ) {
+                	return false;
+                }
+                if (getScanEngine().isOk(status)) {
+                	return true;
+                }
                 switch (status){
                     case 100: break; //Continue transfer
-                    case 200: case 201: return false;
-                    case 204: return true;
                     case 404: throw new ICAPException("404: ICAP Service not found");
-                    default: throw new ICAPException("Server returned unknown status code:"+status);
+                    default: throw new ICAPException("Server returned unexpected status code:"+status);
                 }
             }
             else {
-                throw new ICAPException("Unrecognized or no status code in response header.");
+                throw new ICAPException("Unexpected or no status code in response header.");
             }
             //Sending remaining part of file
             len -= previewSize;
@@ -189,19 +220,15 @@ public final class ICAP implements Closeable {
         if (tempString != null){
             int status = Integer.parseInt(tempString);
 
-            if (status == 204){return true;} //Unmodified
-
-            if (status == 200 || status == 201){ //OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
-            	String response = parse(HTTPTERMINATOR);
-                int x = response.indexOf("</title>",0);
-                if (x >= 0) {
-                    int y = response.indexOf("</html>",x);
-                    responseText = response.substring(x+8,y);
-                }
-                return false;
-           }
+            if (getScanEngine().isVirus(status, responseMap) ) {
+            	responseText = getScanEngine().parseResponse(responseMap, parse(HTTPTERMINATOR));
+            	return false;
+            }
+            if (getScanEngine().isOk(status)) {
+            	return true;
+            }
         }
-        throw new ICAPException("Unrecognized or no status code in response header.");
+        throw new ICAPException("Unexpected or no status code in response header.");
     }
 
     /**
@@ -258,8 +285,8 @@ public final class ICAP implements Closeable {
      * @param response A raw response header as a String.
      * @return HashMap of the key,value pairs of the response
      */
-    private HashMap<String,String> parseHeaders(String response){
-        HashMap<String,String> headers = new HashMap<>();
+    private Map<String,String> parseHeaders(String response){
+        Map<String,String> headers = new HashMap<>();
 
         /****SAMPLE:****
          * ICAP/1.0 204 Unmodified
@@ -278,19 +305,22 @@ public final class ICAP implements Closeable {
         // When (i+2==response.length()) The end of the header have been reached.
         // The +=2 is added to skip the "\r\n".
         // Read headers
-        int i = response.indexOf("\r\n",y);
+        int i = response.indexOf("\r\n",y), j;
         i+=2;
-        while (i+2!=response.length() && response.substring(i).contains(":")) {
+        while (i+2<response.length() && (j = response.indexOf(':',i)) > 0) {
 
-            int n = response.indexOf(":",i);
-            String key = response.substring(i, n);
-
-            n += 2;
-            i = response.indexOf("\r\n",n);
-            String value = response.substring(n, i);
-
-            headers.put(key, value);
+            String key = response.substring(i, j);
+            j += 2;
+            i = response.indexOf("\r\n",j);
+            String value = response.substring(j, i);
             i+=2;
+            while (i+2<response.length() && Character.isWhitespace(response.charAt(i))) {
+            	// folded header (e.g. X-Violations-Found)
+            	j = response.indexOf("\r\n",i);
+            	value += response.substring(i, j);
+            	i=j+2;
+            }
+            headers.put(key, value);
         }
 
         return headers;
