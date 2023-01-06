@@ -16,23 +16,23 @@
 package com.artofarc.util;
 
 import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.UUID;
-import javax.xml.bind.DatatypeConverter;
 
 public final class UUIDUtil {
 
 	public static String toBase64(UUID uuid) {
-		final ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Long.BYTES + 2);
+		final ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Long.BYTES);
 		byteBuffer.putLong(uuid.getMostSignificantBits());
 		byteBuffer.putLong(uuid.getLeastSignificantBits());
-		return DatatypeConverter.printBase64Binary(byteBuffer.array());
+		return Base64.getEncoder().encodeToString(byteBuffer.array());
 	}
 
 	public static UUID fromBase64(String base64) {
 		if (base64.length() != 24) {
 			throw new IllegalArgumentException("base64 is expected to have 24 chars");
 		}
-		final ByteBuffer byteBuffer = ByteBuffer.wrap(DatatypeConverter.parseBase64Binary(base64));
+		final ByteBuffer byteBuffer = ByteBuffer.wrap(Base64.getDecoder().decode(base64));
 		return new UUID(byteBuffer.getLong(), byteBuffer.getLong());
 	}
 
