@@ -70,14 +70,14 @@ public class DumpCacheAction extends Action {
 		if (execContext.getResource() instanceof String) {
 			String msg = execContext.getResource();
 			if (message.isSink()) {
-				message.getBodyAsJsonGenerator().write(msg).close();
+				message.createJsonGeneratorFromBodyAsSink().write(msg).close();
 			} else {
 				message.reset(BodyType.STRING, '"' + msg + '"');
 			}
 		} else {
 			LRUCacheWithExpirationFactory<Object, Object[]>.Cache cache = execContext.getResource();
 			if (message.isSink()) {
-				try (JsonGenerator jsonGenerator = message.getBodyAsJsonGenerator()) {
+				try (JsonGenerator jsonGenerator = message.createJsonGeneratorFromBodyAsSink()) {
 					writeJson(context, jsonGenerator, cache);
 				}
 			} else {

@@ -87,7 +87,7 @@ public class BrowseQueueAction extends Action {
 			String maxMessages = message.getVariable("maxMessages");
 			try (QueueBrowser browser = jmsSession.getSession().createBrowser(jmsSession.createQueue(queueName), messageSelector)) {
 				if (message.isSink()) {
-					try (JsonGenerator jsonGenerator = message.getBodyAsJsonGenerator()) {
+					try (JsonGenerator jsonGenerator = message.createJsonGeneratorFromBodyAsSink()) {
 						new JsonFormatter(jsonGenerator, browser, skipMessages, maxMessages);
 					}
 				} else {
@@ -103,7 +103,7 @@ public class BrowseQueueAction extends Action {
 				for (; consumer.receiveNoWait() != null; ++count);
 			}
 			if (message.isSink()) {
-				message.getBodyAsJsonGenerator().write(count).close();
+				message.createJsonGeneratorFromBodyAsSink().write(count).close();
 			} else {
 				message.reset(BodyType.STRING, Integer.toString(count));
 			}

@@ -56,7 +56,7 @@ public abstract class WssAction extends Action {
 		if (nextActionIsPipelineStop) {
 			Document document = execContext.getResource();
 			if (message.isSink()) {
-				context.transformRaw(new DOMSource(document), message.getBodyAsSinkResult(context));
+				context.transformRaw(new DOMSource(document), message.createResultFromBodyAsSink(context));
 			} else {
 				message.reset(BodyType.DOM, document);
 			}

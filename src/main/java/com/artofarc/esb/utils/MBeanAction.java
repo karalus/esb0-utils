@@ -15,13 +15,10 @@
  */
 package com.artofarc.esb.utils;
 
-import java.lang.management.ManagementFactory;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Optional;
 
 import javax.json.JsonObject;
-import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.json.bind.*;
 import javax.json.bind.serializer.*;
@@ -39,9 +36,8 @@ import com.artofarc.esb.http.HttpConstants;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
-import com.artofarc.util.JsonFactoryHelper;
+import com.artofarc.util.ReflectionUtils;
 
-// Supports old ESB0 versions prior 1.9.3, can be optimized
 public class MBeanAction extends Action {
 
 	private final static Jsonb JSONB = JsonbBuilder.create(new JsonbConfig().withSerializers(new JsonbSerializer<TabularData>() {
@@ -74,15 +70,13 @@ public class MBeanAction extends Action {
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
-		String contentType = message.getHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE);
 		message.clearHeaders();
-		if (HttpConstants.isNotJSON(contentType)) {
-			throw httpError(message, SC_UNSUPPORTED_MEDIA_TYPE, contentType, null);
+		if (HttpConstants.isNotJSON(message.getContentType())) {
+			throw httpError(message, SC_UNSUPPORTED_MEDIA_TYPE, message.getContentType(), null);
 		}
 		String name = message.getVariable("objectName");
 		ObjectName objectName = name != null ? new ObjectName(name) : null;
-		//MBeanServer mbeanServer = context.getGlobalContext().getPlatformMBeanServer();
-		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+		MBeanServer mbeanServer = context.getGlobalContext().getPlatformMBeanServer();
 		String attribute = message.getVariable("attribute");
 		String method = message.getVariable(ESBConstants.HttpMethod, "null");
 		switch (method) {
@@ -112,7 +106,7 @@ public class MBeanAction extends Action {
 			if (!optional.isPresent()) {
 				throw httpError(message, SC_BAD_REQUEST, name + " has no attribute " + attribute, null);
 			}
-			Object value = JSONB.fromJson(message.getBodyAsString(context), classForName(optional.get().getType()));
+			Object value = JSONB.fromJson(message.getBodyAsString(context), ReflectionUtils.classForName(optional.get().getType()));
 			mbeanServer.setAttribute(objectName, new Attribute(attribute, value));
 			returnResult(message, null, "void");
 			break;
@@ -120,10 +114,7 @@ public class MBeanAction extends Action {
 			if (objectName == null) {
 				throw httpError(message, SC_BAD_REQUEST, "objectName not set", null);
 			}
-//			JsonObject jsonObject = message.getBodyAsJsonValue(context);
-			try (JsonReader jsonReader = JsonFactoryHelper.JSON_READER_FACTORY.createReader(message.getBodyAsReader(context))) {
-				JsonObject jsonObject = jsonReader.readObject();
-				
+			JsonObject jsonObject = message.getBodyAsJsonValue(context);
 			String operation = jsonObject.getString("operation", null);
 			int paramCount = jsonObject.size() - 1;
 			String values[] = new String[paramCount];
@@ -142,7 +133,7 @@ public class MBeanAction extends Action {
 				if (signature.length == paramCount && operationInfo.getName().equals(operation)) {
 					try {
 						for (int i = 0; i < paramCount; ++i) {
-							params[i] = JSONB.fromJson(values[i], classForName(types[i] = signature[i].getType()));
+							params[i] = JSONB.fromJson(values[i], ReflectionUtils.classForName(types[i] = signature[i].getType()));
 						}
 						Object result = mbeanServer.invoke(objectName, operation, params, types);
 						returnResult(message, result, operationInfo.getReturnType());
@@ -157,22 +148,9 @@ public class MBeanAction extends Action {
 			} else {
 				throw httpError(message, SC_NOT_FOUND, name + " has no operation " + operation, null);
 			}
-			
-			}
 		default:
 			throw httpError(message, SC_METHOD_NOT_ALLOWED, method, null);
 		}
-	}
-
-	private static Class<?> classForName(String name) throws Exception {
-//		return com.artofarc.util.ReflectionUtils.classForName(name);
-		try {
-			Method method = Class.class.getDeclaredMethod("getPrimitiveClass", String.class);
-			method.setAccessible(true);
-			return (Class<?>) method.invoke(null, name);
-		} catch (ReflectiveOperationException e) {
-		}
-		return Class.forName(name);
 	}
 
 	private MBeanInfo getMBeanInfo(ESBMessage message, MBeanServer mbeanServer, ObjectName objectName) throws Exception {

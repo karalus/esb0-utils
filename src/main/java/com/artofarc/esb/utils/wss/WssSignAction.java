@@ -52,7 +52,7 @@ public class WssSignAction extends WssAction {
 		WSSecHeader secHeader = new WSSecHeader((Document) domResult.getNode());
 		secHeader.insertSecurityHeader();
 		WSSecSignature builder = new WSSecSignature(secHeader);
-		builder.setUserInfo((String) bindVariable(user, context, message), password);
+		builder.setUserInfo((String) eval(user, context, message), password);
 		builder.setKeyIdentifierType(WSConstants.BST_DIRECT_REFERENCE);
 		builder.setDigestAlgo(WSConstants.SHA256);
 		builder.setAddInclusivePrefixes(false);
