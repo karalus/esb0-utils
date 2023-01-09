@@ -15,25 +15,40 @@
  */
 package com.artofarc.util;
 
-import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.UUID;
 
 public final class UUIDUtil {
 
 	public static String toBase64(UUID uuid) {
-		final ByteBuffer byteBuffer = ByteBuffer.allocate(2 * Long.BYTES);
-		byteBuffer.putLong(uuid.getMostSignificantBits());
-		byteBuffer.putLong(uuid.getLeastSignificantBits());
-		return Base64.getEncoder().encodeToString(byteBuffer.array());
+		final byte[] ba = new byte[2 * Long.BYTES];
+		longToBytes(uuid.getMostSignificantBits(), ba, 0);
+		longToBytes(uuid.getLeastSignificantBits(), ba, Long.BYTES);
+		return Base64.getEncoder().encodeToString(ba);
 	}
 
 	public static UUID fromBase64(String base64) {
 		if (base64.length() != 24) {
 			throw new IllegalArgumentException("base64 is expected to have 24 chars");
 		}
-		final ByteBuffer byteBuffer = ByteBuffer.wrap(Base64.getDecoder().decode(base64));
-		return new UUID(byteBuffer.getLong(), byteBuffer.getLong());
+		final byte[] ba = Base64.getDecoder().decode(base64);
+		return new UUID(bytesToLong(ba, 0), bytesToLong(ba, Long.BYTES));
+	}
+
+	private static void longToBytes(long l, final byte[] result, int offset) {
+		for (int i = Long.BYTES - 1; i >= 0; i--) {
+			result[i + offset] = (byte) (l & 0xFF);
+			l >>= Byte.SIZE;
+		}
+	}
+
+	private static long bytesToLong(final byte[] b, int offset) {
+		long result = 0;
+		for (int i = 0; i < Long.BYTES; i++) {
+			result <<= Byte.SIZE;
+			result |= (b[i + offset] & 0xFF);
+		}
+		return result;
 	}
 
 }

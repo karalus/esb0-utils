@@ -4,7 +4,7 @@
 
 	<groupId>com.artofarc.eai</groupId>
 	<artifactId>esb0-utils</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>utils</name>
@@ -39,23 +39,21 @@
 			<version>2.3.3</version>
 			<scope>provided</scope>
 		</dependency>
+	<dependency>
+		<groupId>org.eclipse</groupId>
+		<artifactId>yasson</artifactId>
+		<version>1.0.1</version>
+	</dependency>
 		<dependency>
 			<groupId>org.glassfish</groupId>
 			<artifactId>jakarta.json</artifactId>
 			<version>1.1.6</version>
-			<scope>provided</scope>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 		    <groupId>jakarta.json.bind</groupId>
 		    <artifactId>jakarta.json.bind-api</artifactId>
 		    <version>1.0.2</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-		    <groupId>org.eclipse</groupId>
-		    <artifactId>yasson</artifactId>
-		    <version>1.0.8</version>
-		    <scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>net.sf.saxon</groupId>
@@ -76,18 +74,31 @@
 			<version>1.2.18</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- 
 		<dependency>
-			<groupId>jakarta.jms</groupId>
-			<artifactId>jakarta.jms-api</artifactId>
-			<version>2.0.3</version>
-			<scope>provided</scope>
+		   <groupId>com.siemens.ct.exi</groupId>
+		   <artifactId>exificient</artifactId>
+		   <version>1.0.4</version>
+		   <exclusions>
+		   	<exclusion>
+		   		<groupId>xml-apis</groupId>
+		   		<artifactId>xml-apis</artifactId>
+		   	</exclusion>
+		   </exclusions>
+		</dependency>
+		 -->
+		 
+		<dependency>
+			<groupId>org.apache.santuario</groupId>
+			<artifactId>xmlsec</artifactId>
+			<version>2.3.2</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.wss4j/wss4j-ws-security-dom -->
 		<dependency>
 			<groupId>org.apache.wss4j</groupId>
 			<artifactId>wss4j-ws-security-dom</artifactId>
-			<version>2.3.3</version>
+			<version>2.4.1</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -95,7 +106,7 @@
 		<dependency>
 			<groupId>org.apache.wss4j</groupId>
 			<artifactId>wss4j-ws-security-common</artifactId>
-			<version>2.3.3</version>
+			<version>2.4.1</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -107,7 +118,49 @@
 			<scope>provided</scope>
 		</dependency>
 		-->
+		
+		<!-- https://mvnrepository.com/artifact/name.dmaus.schxslt/schxslt -->
+		<dependency>
+		    <groupId>name.dmaus.schxslt</groupId>
+		    <artifactId>schxslt</artifactId>
+		    <version>1.8.6</version>
+		</dependency>
 
+		<dependency>
+		    <groupId>javax.transaction</groupId>
+		    <artifactId>javax.transaction-api</artifactId>
+		    <version>1.2</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>jakarta.jms</groupId>
+			<artifactId>jakarta.jms-api</artifactId>
+			<version>2.0.3</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>4.0.3</version>
+			<scope>provided</scope>
+		</dependency>
+
+<dependency>
+  <groupId>com.oracle.database.messaging</groupId>
+  <artifactId>aqapi</artifactId>
+  <version>19.3.0.0</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/com.sun.xml.ws/wscompile
+<dependency>
+    <groupId>com.sun.xml.ws</groupId>
+    <artifactId>wscompile</artifactId>
+    <version>2.3.5</version>
+    <scope>provided</scope>
+</dependency>
+ -->
 	</dependencies>
 	<build>
 		<pluginManagement>

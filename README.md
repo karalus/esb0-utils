@@ -11,6 +11,9 @@ __Recommendation:__ Do not expose an esb0 directly to the internet. It is not se
 ### Fast Infoset ###
 Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Infoset) even more by using external vocabularies.
 
+### ICAP ###
+Implementation of the ICAP protocol to be used with virus scanners to check binaries while processing messages.
+
 ### Miscellaneous ###
 - Browse JMS queue (convert messages to JSON), purge queue 
 - Dump contents of a cache as JSON, purge/delete cache
@@ -22,4 +25,6 @@ Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Inf
 - HTTP check alive test for JBoss Cluster setup with Apache mod_cluster
 - Get state of JMSConnections in order to detect outages
 - Get state of all JMSConsumers
+- Beautify or canonicalize XML
 - Provide rudimentary MBean API support (get & set attributes, list all attributes, invoke operations) via JSON. Can be used in a (admin) REST service.
+- HTTP connection test for checking connectivity before actually using a service provider (e.g. after deployment to check for firewall issues).
