@@ -95,7 +95,7 @@ public class TreatJDBCResultAction extends Action {
 						String cid = bodyPart.getContentID();
 						if (start == null && i == 0 || start != null && start.equals(cid)) {
 							String charset = getValueFromHttpHeader(bodyPart.getContentType(), HTTP_HEADER_CONTENT_TYPE_PARAMETER_CHARSET);
-							msg = Json.createValue(new String(IOUtils.copy(bodyPart.getInputStream()), charset != null ? charset : "UTF-8"));
+							msg = Json.createValue(new String(IOUtils.toByteArray(bodyPart.getInputStream()), charset != null ? charset : "UTF-8"));
 							break;
 						}
 					}

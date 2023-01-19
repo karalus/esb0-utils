@@ -15,6 +15,7 @@
  */
 package com.artofarc.esb.utils;
 
+import java.io.StringWriter;
 import java.util.Enumeration;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
@@ -29,12 +30,17 @@ import javax.jms.TextMessage;
 import javax.json.stream.JsonGenerator;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.DatatypeConverter;
+import javax.xml.transform.sax.SAXSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.xml.sax.InputSource;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.http.HttpConstants;
+import com.artofarc.esb.jms.BytesMessageInputStream;
 import com.artofarc.esb.jms.JMSConnectionData;
 import com.artofarc.esb.jms.JMSSession;
 import com.artofarc.esb.message.BodyType;
@@ -42,6 +48,7 @@ import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.esb.resource.JMSSessionFactory;
 import com.artofarc.util.JsonValueGenerator;
+import com.artofarc.util.MQMessageParser;
 
 public class BrowseQueueAction extends Action {
 
@@ -88,11 +95,11 @@ public class BrowseQueueAction extends Action {
 			try (QueueBrowser browser = jmsSession.getSession().createBrowser(jmsSession.createQueue(queueName), messageSelector)) {
 				if (message.isSink()) {
 					try (JsonGenerator jsonGenerator = message.createJsonGeneratorFromBodyAsSink()) {
-						new JsonFormatter(jsonGenerator, browser, skipMessages, maxMessages);
+						new JsonFormatter(context, jsonGenerator, browser, skipMessages, maxMessages);
 					}
 				} else {
 					JsonValueGenerator jsonValueGenerator = new JsonValueGenerator();
-					new JsonFormatter(jsonValueGenerator, browser, skipMessages, maxMessages);
+					new JsonFormatter(context, jsonValueGenerator, browser, skipMessages, maxMessages);
 					message.reset(BodyType.JSON_VALUE, jsonValueGenerator.getJsonValue());
 				}
 			}
@@ -117,7 +124,7 @@ public class BrowseQueueAction extends Action {
 	class JsonFormatter {
 		final GregorianCalendar timestamp = new GregorianCalendar();
 
-		JsonFormatter(JsonGenerator jsonGenerator, QueueBrowser browser, String skipMessages, String maxMessages) throws Exception {
+		JsonFormatter(Context context, JsonGenerator jsonGenerator, QueueBrowser browser, String skipMessages, String maxMessages) throws Exception {
 			jsonGenerator.writeStartArray();
 			int skip = skipMessages != null ? Integer.parseInt(skipMessages) : 0 ;
 			int max = maxMessages != null ? Integer.parseInt(maxMessages) : Integer.MAX_VALUE;
@@ -132,12 +139,12 @@ public class BrowseQueueAction extends Action {
 				if (--max < 0) {
 					break;
 				}
-				writeJson(jsonGenerator, enumeration.nextElement());
+				writeJson(context, jsonGenerator, enumeration.nextElement());
 			}
 			jsonGenerator.writeEnd();
 		}
 
-		private void writeJson(JsonGenerator jsonGenerator, Message message) throws Exception {
+		private void writeJson(Context context, JsonGenerator jsonGenerator, Message message) throws Exception {
 			jsonGenerator.writeStartObject();
 			Map.Entry<String, String> destinationName = JMSSession.getDestinationName(message.getJMSDestination());
 			if (destinationName != null) {
@@ -157,12 +164,35 @@ public class BrowseQueueAction extends Action {
 			jsonGenerator.writeEnd();
 			if (message instanceof BytesMessage) {
 				BytesMessage bytesMessage = (BytesMessage) message;
-				byte[] bytes = new byte[Math.toIntExact(bytesMessage.getBodyLength())];
-				bytesMessage.readBytes(bytes);
 				if (_convertBytesMessage != null) {
-					String charSet = message.getStringProperty(ESBConstants.Charset);
-					jsonGenerator.write(_convertBytesMessage, new String(bytes, charSet != null ? charSet : "UTF-8"));
+					BytesMessageInputStream in = new BytesMessageInputStream(bytesMessage);
+					String contentType = message.getStringProperty("Content_Type");
+					if (MQMessageParser.isMQMessage(message)) {
+						MQMessageParser mqMessageParser = new MQMessageParser(in);
+						for (Map.Entry<String, Map<String, Object>> element : mqMessageParser.getElements().entrySet()) {
+							jsonGenerator.writeStartObject(element.getKey());
+							for (Map.Entry<String, Object> entry : element.getValue().entrySet()) {
+								writeJson(jsonGenerator, entry.getKey(), entry.getValue());
+							}
+							jsonGenerator.writeEnd();
+							if (element.getKey().equals("usr") ) {
+								contentType = (String) element.getValue().get("Content_Type");
+							}
+						}
+					}
+					if (HttpConstants.isFastInfoset(contentType)) {
+						StringWriter sw = new StringWriter();
+						context.transformRaw(new SAXSource(context.getFastInfosetDeserializer(), new InputSource(in)), new StreamResult(sw));
+						jsonGenerator.write(_convertBytesMessage, sw.toString());
+					} else {
+						byte[] bytes = new byte[in.available()];
+						bytesMessage.readBytes(bytes);
+						String charSet = message.getStringProperty(ESBConstants.Charset);
+						jsonGenerator.write(_convertBytesMessage, new String(bytes, charSet != null ? charSet : "UTF-8"));
+					}
 				} else {
+					byte[] bytes = new byte[Math.toIntExact(bytesMessage.getBodyLength())];
+					bytesMessage.readBytes(bytes);
 					jsonGenerator.write("bytes", DatatypeConverter.printBase64Binary(bytes));
 				}
 			} else if (message instanceof TextMessage) {
@@ -172,14 +202,25 @@ public class BrowseQueueAction extends Action {
 		}
 
 		private void writeJson(JsonGenerator jsonGenerator, String key, Object value) {
-			if (value instanceof Number) {
-				long longValue = ((Number) value).longValue();
-				if (longValue > 0 && _convertTimestamps.contains(key)) {
-					timestamp.setTimeInMillis(longValue);
-					jsonGenerator.write(key, DatatypeConverter.printDateTime(timestamp));
+			if (_convertTimestamps.contains(key)) {
+				if (value != null) {
+					long longValue;
+					if (value instanceof Number) {
+						longValue = ((Number) value).longValue();
+					} else {
+						longValue = Long.parseLong(value.toString());
+					}
+					if (longValue > 0) {
+						timestamp.setTimeInMillis(longValue);
+						jsonGenerator.write(key, DatatypeConverter.printDateTime(timestamp));
+					} else {
+						jsonGenerator.write(key, longValue);
+					}
 				} else {
-					jsonGenerator.write(key, longValue);
+					jsonGenerator.writeNull(key);
 				}
+			} else if (value instanceof Number) {
+				jsonGenerator.write(key, ((Number) value).longValue());
 			} else if (value != null) {
 				jsonGenerator.write(key, value.toString());
 			} else {

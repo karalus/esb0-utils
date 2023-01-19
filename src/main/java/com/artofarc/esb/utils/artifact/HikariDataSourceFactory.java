@@ -31,7 +31,10 @@ public class HikariDataSourceFactory implements com.artofarc.esb.artifact.JNDIOb
 	private HikariConfig _hikariConfig;
 
 	@Override
-	public void validate(String type, Properties properties) {
+	public void validate(Class<?> type, Properties properties) {
+		if (!type.isAssignableFrom(HikariDataSource.class)) {
+			throw new IllegalArgumentException("HikariDataSource cannot be assigned to " + type);
+		}
 		_hikariConfig = new HikariConfig(properties);
 		_hikariConfig.validate();
 	}
