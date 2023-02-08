@@ -84,7 +84,7 @@ public class TreatJDBCResultAction extends Action {
 			for (ListIterator<JsonValue> iterRows = result.getJsonArray("rows").listIterator(); iterRows.hasNext();) {
 				JsonArray row = iterRows.next().asJsonArray();
 				String encoding = row.getString(posEncoding, "UTF-8");
-				String mediaType = posMediaType < 0 ? SOAP_1_1_CONTENT_TYPE : row.getString(posMediaType, SOAP_1_1_CONTENT_TYPE);
+				String mediaType = posMediaType < 0 ? HTTP_HEADER_CONTENT_TYPE_SOAP11 : row.getString(posMediaType, HTTP_HEADER_CONTENT_TYPE_SOAP11);
 				byte[] rawMessage = DatatypeConverter.parseBase64Binary(row.getString(posMessage));
 				JsonValue msg = JsonValue.NULL;
 				if (mediaType.startsWith("multipart/")) {
