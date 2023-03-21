@@ -16,7 +16,6 @@
 package com.artofarc.esb.utils;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -25,6 +24,8 @@ import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.http.HttpCheckAlive;
 import com.artofarc.esb.http.HttpEndpoint;
+import com.artofarc.esb.http.HttpUrl;
+import com.artofarc.esb.http.HttpUrlSelector;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
@@ -44,13 +45,12 @@ public class HTTPConnectionTestAction extends Action {
 			IOException lastException = null;
 			for (int i = 0; i < httpEndpoint.getHttpUrls().size(); ++i) {
 				try {
-					HttpURLConnection conn = httpCheckAlive.connect(httpEndpoint, i);
-					int responseCode = conn.getResponseCode();
-					if (httpCheckAlive.isAlive(conn, responseCode)) {
+					HttpUrl httpUrl = httpEndpoint.getHttpUrls().get(i);
+					if (HttpUrlSelector.checkAlive(httpEndpoint, httpUrl, httpCheckAlive)) {
 						message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
 						return;
 					}
-					lastException = new HttpCheckAlive.ConnectException(httpEndpoint.getHttpUrls().get(i).getUrlStr() + " is not alive. Response code " + responseCode);
+					lastException = new HttpCheckAlive.ConnectException(httpUrl.getUrlStr() + " is not alive.");
 				} catch (IOException e) {
 					lastException = e;
 				}

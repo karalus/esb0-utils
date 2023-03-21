@@ -15,19 +15,23 @@
  */
 package com.artofarc.esb.utils;
 
-import java.net.HttpURLConnection;
+import java.util.function.Function;
+
+import javax.servlet.http.HttpServletResponse;
+
+import com.artofarc.esb.http.HttpConstants;
 
 public class JBossClusterHttpCheckAlive extends com.artofarc.esb.http.HttpCheckAlive {
 
 	@Override
-	public boolean isAlive(HttpURLConnection conn, int responseCode) {
-		if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-			String contentType = conn.getContentType();
+	public boolean isAlive(int statusCode, Function<String, String> getHeader) {
+		if (statusCode == HttpServletResponse.SC_NOT_FOUND) {
+			String contentType = getHeader.apply(HttpConstants.HTTP_HEADER_CONTENT_TYPE);
 			if (contentType != null && contentType.startsWith("text/html")) {
 				return false;
 			}
 		}
-		return super.isAlive(conn, responseCode);
+		return super.isAlive(statusCode, getHeader);
 	}
 
 }
