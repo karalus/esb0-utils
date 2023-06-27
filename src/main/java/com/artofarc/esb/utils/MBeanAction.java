@@ -32,6 +32,7 @@ import com.artofarc.esb.action.Action;
 import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
+import com.artofarc.esb.context.GlobalContext;
 import com.artofarc.esb.http.HttpConstants;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBConstants;
@@ -63,6 +64,10 @@ public class MBeanAction extends Action {
 			generator.write(objectName.getCanonicalName());
 		}
 	}));
+
+	static {
+		GlobalContext.logVersion("JSON-B", Jsonb.class.getPackage(), JSONB.getClass());
+	}
 
 	public MBeanAction() {
 		_pipelineStop = true;

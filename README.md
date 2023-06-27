@@ -15,7 +15,7 @@ Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Inf
 Implementation of the ICAP protocol to be used with virus scanners to check binaries while processing messages.
 
 ### Miscellaneous ###
-- Browse JMS queue (convert messages to JSON), purge queue 
+- Browse JMS queue (convert messages to JSON), purge queue, supports decoding of Fast Infoset, supports parsing of Messages with JMS_IBM_Format
 - Dump contents of a cache as JSON, purge/delete cache
 - Create a Heapdump/Threaddump inside ESB0 to be downloaded
 - Convert a stream message into a [SwA](https://en.wikipedia.org/wiki/SOAP_with_Attachments) attachment

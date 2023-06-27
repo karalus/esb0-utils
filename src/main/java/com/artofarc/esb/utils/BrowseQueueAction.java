@@ -19,6 +19,7 @@ import java.io.StringWriter;
 import java.util.Enumeration;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -78,7 +79,11 @@ public class BrowseQueueAction extends Action {
 		message.clearHeaders();
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, HttpConstants.HTTP_HEADER_CONTENT_TYPE_JSON);
 		if (_jmsConnectionData == null) {
-			_jmsConnectionData = new JMSConnectionData(context.getGlobalContext(), _jndiConnectionFactory, _userName, _password);
+			List<JMSConnectionData> jmsConnectionData = JMSConnectionData.create(context.getGlobalContext(), _jndiConnectionFactory, _userName, _password);
+			if (jmsConnectionData.size() > 1) {
+				throw new ExecutionException(this, "can only use one ConnectionFactory");
+			}
+			_jmsConnectionData = jmsConnectionData.get(0);
 		}
 		JMSSessionFactory jmsSessionFactory = context.getResourceFactory(JMSSessionFactory.class);
 		JMSSession jmsSession = jmsSessionFactory.getResource(_jmsConnectionData, false);

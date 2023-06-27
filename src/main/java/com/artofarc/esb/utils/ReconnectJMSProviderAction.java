@@ -15,6 +15,7 @@
  */
 package com.artofarc.esb.utils;
 
+import java.util.List;
 import java.util.Properties;
 
 import com.artofarc.esb.action.Action;
@@ -49,7 +50,11 @@ public class ReconnectJMSProviderAction extends Action {
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
 		message.clearHeaders();
 		if (_jmsConnectionData == null) {
-			_jmsConnectionData = new JMSConnectionData(context.getGlobalContext(), _jndiConnectionFactory, _userName, _password);
+			List<JMSConnectionData> jmsConnectionData = JMSConnectionData.create(context.getGlobalContext(), _jndiConnectionFactory, _userName, _password);
+			if (jmsConnectionData.size() > 1) {
+				throw new ExecutionException(this, "can only use one ConnectionFactory");
+			}
+			_jmsConnectionData = jmsConnectionData.get(0);
 		}
 		String workerPoolName = _workerPool != null ? _workerPool : message.getVariable("workerPool");
 		WorkerPool workerPool = context.getGlobalContext().getWorkerPool(workerPoolName);
