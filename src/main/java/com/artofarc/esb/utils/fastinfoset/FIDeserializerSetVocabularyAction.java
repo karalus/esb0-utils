@@ -35,7 +35,7 @@ public class FIDeserializerSetVocabularyAction extends ForwardAction {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
-		String vocabularyURI = resolve(message, FastInfosetVocabulary.VOCABULARY_URI, true);
+		String vocabularyURI = (String) resolve(message, FastInfosetVocabulary.VOCABULARY_URI, true);
 		if (vocabularyURI == null) {
 			vocabularyURI = schemaArtifactURI;
 		}
