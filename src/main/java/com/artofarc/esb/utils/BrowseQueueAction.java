@@ -59,6 +59,7 @@ public class BrowseQueueAction extends Action {
 
 	public BrowseQueueAction(ClassLoader classLoader, Properties properties) {
 		_pipelineStop = true;
+		_streamingToSink = true;
 		_jndiConnectionFactory = properties.getProperty("jndiConnectionFactory");
 		if (_jndiConnectionFactory == null) {
 			throw new IllegalArgumentException("jndiConnectionFactory is mandatory");

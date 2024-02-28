@@ -49,6 +49,7 @@ public abstract class WssAction extends Action {
 		crypto = CryptoFactory.getInstance(cryptoProps, classLoader, null);
 		user = properties.getProperty("privatekeyAlias", "${privatekeyAlias}");
 		password = cryptoProps.getProperty("org.apache.ws.security.crypto.merlin.keystore.private.password");
+		_streamingToSink = true;
 	}
 
 	@Override

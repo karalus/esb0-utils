@@ -15,24 +15,25 @@
  */
 package com.artofarc.esb.utils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Calendar;
 
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
+import javax.xml.bind.DatatypeConverter;
 
 import com.artofarc.esb.action.Action;
+import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.context.WorkerPool;
 import com.artofarc.esb.http.HttpConstants;
-import com.artofarc.esb.jms.JMSConnectionData;
 import com.artofarc.esb.jms.JMSConnectionProvider;
 import com.artofarc.esb.mbean.JMSConnectionGuardMXBean;
 import com.artofarc.esb.message.BodyType;
+import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.util.JsonFactoryHelper;
-import com.artofarc.util.ReflectionUtils;
 
 public class GetJMSConnectionStatesAction extends Action {
 
@@ -42,22 +43,51 @@ public class GetJMSConnectionStatesAction extends Action {
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
-		Map<JMSConnectionData, Boolean> states = new HashMap<>();
-		for (WorkerPool workerPool : context.getGlobalContext().getWorkerPools()) {
-			JMSConnectionProvider jmsConnectionProvider = workerPool.getPoolContext().getResourceFactory(JMSConnectionProvider.class);
-			for (JMSConnectionGuardMXBean jmsConnectionGuard : jmsConnectionProvider.getResources()) {
-				JMSConnectionData jmsConnectionData = ReflectionUtils.getField(jmsConnectionGuard, "_jmsConnectionData");
-				states.put(jmsConnectionData, jmsConnectionGuard.isConnected());
+		message.clearHeaders();
+		String jmsConnection = message.getVariable("jmsConnection");
+		if ("POST".equals(message.getVariable(ESBConstants.HttpMethod))) {
+			if (jmsConnection == null) {
+				message.putVariable(ESBConstants.HttpResponseCode, 400);
+				throw new ExecutionException(this, "jmsConnection not set");
+			}
+			if (HttpConstants.isNotJSON(message.getContentType())) {
+				message.putVariable(ESBConstants.HttpResponseCode, 415);
+				throw new ExecutionException(this, "Unexpected Content-Type: " + message.getContentType());
+			}
+			boolean disconnect = JsonValue.FALSE.equals(message.getBodyAsJsonValue(context));
+			for (WorkerPool workerPool : context.getGlobalContext().getWorkerPools()) {
+				JMSConnectionProvider jmsConnectionProvider = workerPool.getPoolContext().peekResourceFactory(JMSConnectionProvider.class);
+				if (jmsConnectionProvider != null) {
+					for (JMSConnectionGuardMXBean jmsConnectionGuard : jmsConnectionProvider.getResources()) {
+						if (jmsConnectionGuard.getConnectionData().contains(jmsConnection)) {
+							if (disconnect) {
+								jmsConnectionGuard.disconnect();
+							} else {
+								jmsConnectionGuard.connect();
+							}
+						}
+					}
+				}
 			}
 		}
-		message.clearHeaders();
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, HttpConstants.HTTP_HEADER_CONTENT_TYPE_JSON);
 		JsonArrayBuilder result = JsonFactoryHelper.JSON_BUILDER_FACTORY.createArrayBuilder();
-		for (Map.Entry<JMSConnectionData, Boolean> entry : states.entrySet()) {
-			JsonObjectBuilder builder = JsonFactoryHelper.JSON_BUILDER_FACTORY.createObjectBuilder();
-			builder.add("jmsConnection", entry.getKey().toString());
-			builder.add("connected", entry.getValue());
-			result.add(builder);
+		Calendar calendar = Calendar.getInstance();
+		for (WorkerPool workerPool : context.getGlobalContext().getWorkerPools()) {
+			JMSConnectionProvider jmsConnectionProvider = workerPool.getPoolContext().peekResourceFactory(JMSConnectionProvider.class);
+			if (jmsConnectionProvider != null) {
+				for (JMSConnectionGuardMXBean jmsConnectionGuard : jmsConnectionProvider.getResources()) {
+					if (jmsConnection == null || jmsConnectionGuard.getConnectionData().contains(jmsConnection)) {
+						JsonObjectBuilder builder = JsonFactoryHelper.JSON_BUILDER_FACTORY.createObjectBuilder();
+						builder.add("workerPool", workerPool.getName());
+						builder.add("jmsConnection", jmsConnectionGuard.getConnectionData());
+						builder.add("connected", jmsConnectionGuard.isConnected());
+						calendar.setTime(jmsConnectionGuard.getLastChangeOfState());
+						builder.add("lastChangeOfState", DatatypeConverter.printDateTime(calendar));
+						result.add(builder);
+					}
+				}
+			}
 		}
 		message.reset(BodyType.JSON_VALUE, result.build());
 	}

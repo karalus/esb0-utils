@@ -18,6 +18,10 @@ import com.artofarc.util.IOUtils;
 
 public class DumpArtifactAction extends Action {
 
+	public DumpArtifactAction() {
+		_streamingToSink = true;
+	}
+
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
 		String appendHttpUrlPath = message.getVariable(ESBConstants.appendHttpUrlPath);

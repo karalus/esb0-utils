@@ -37,6 +37,10 @@ import com.artofarc.util.StringBuilderWriter;
 
 public class DumpCacheAction extends Action {
 
+	public DumpCacheAction() {
+		_streamingToSink = true;
+	}
+
 	@Override
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
 		message.clearHeaders();
