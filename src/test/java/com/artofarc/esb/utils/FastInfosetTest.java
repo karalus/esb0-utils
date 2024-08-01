@@ -28,7 +28,7 @@ public class FastInfosetTest extends AbstractESBTest {
 
 	@Before
 	public void createContext() throws Exception {
-		createContext(new File("src/test/resources"));
+		createContext("src/test/resources");
 	}
 
 	@Test
@@ -42,17 +42,18 @@ public class FastInfosetTest extends AbstractESBTest {
 		ESBMessage message = new ESBMessage(BodyType.BYTES, readFile("src/test/resources/SOAPRequest.xml"));
 		message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, "text/xml; charset=\"utf-8\"");
 		message.putHeader(HttpConstants.HTTP_HEADER_SOAP_ACTION, "\"\"");
+		message.prepareContent(context);
 
 		@SuppressWarnings("unchecked")
-		Action action = new UnwrapSOAPAction(false, true, wsdlArtifact.getSchema(), WSDL4JUtil.getBinding(wsdlArtifact.getAllBindings(), null, null).getBindingOperations(), null, false);
+		Action action = new UnwrapSOAPAction(false, true, wsdlArtifact.getSchema(), WSDL4JUtil.getBinding(wsdlArtifact.getAllBindings(), null, null).getBindingOperations());
 		ConsumerPort consumerPort = new ConsumerPort(null);
 		consumerPort.setStartAction(action);
-		action = action.setNextAction(new WrapSOAPAction(false, false, true));
+//		action = action.setNextAction(new WrapSOAPAction(false, false, true));
 		SetMessageAction setMessageAction = new SetMessageAction(null, null, null, null);
 		setMessageAction.addAssignment(HttpConstants.HTTP_HEADER_CONTENT_TYPE, true, HttpConstants.HTTP_HEADER_CONTENT_TYPE_FI_SOAP11, null, null, null);
 		action = action.setNextAction(setMessageAction);
 		action = action.setNextAction(new DumpAction());
-		action = action.setNextAction(createUnwrapSOAPAction(false, true));
+//		action = action.setNextAction(createUnwrapSOAPAction(false, true));
 		action = action.setNextAction(new WrapSOAPAction(false, false, true));
 		action = action.setNextAction(new DumpAction());
 		consumerPort.process(context, message);
@@ -76,7 +77,7 @@ public class FastInfosetTest extends AbstractESBTest {
 		properties.setProperty("beautify", "true");
 
 		@SuppressWarnings("unchecked")
-		Action action = new UnwrapSOAPAction(false, true, wsdlArtifact.getSchema(), WSDL4JUtil.getBinding(wsdlArtifact.getAllBindings(), null, null).getBindingOperations(), null, false);
+		Action action = new UnwrapSOAPAction(false, true, wsdlArtifact.getSchema(), WSDL4JUtil.getBinding(wsdlArtifact.getAllBindings(), null, null).getBindingOperations());
 		ConsumerPort consumerPort = new ConsumerPort(null);
 		consumerPort.setStartAction(action);
 		action = action.setNextAction(new WrapSOAPAction(false, false, true));

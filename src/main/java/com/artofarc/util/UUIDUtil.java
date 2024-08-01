@@ -20,18 +20,21 @@ import java.util.UUID;
 
 public final class UUIDUtil {
 
+	private static final Base64.Encoder encoder = Base64.getEncoder().withoutPadding();
+
 	public static String toBase64(UUID uuid) {
 		final byte[] ba = new byte[2 * Long.BYTES];
 		longToBytes(uuid.getMostSignificantBits(), ba, 0);
 		longToBytes(uuid.getLeastSignificantBits(), ba, Long.BYTES);
-		return Base64.getEncoder().encodeToString(ba);
+		return encoder.encodeToString(ba);
 	}
 
 	public static UUID fromBase64(String base64) {
-		if (base64.length() != 24) {
-			throw new IllegalArgumentException("base64 is expected to have 24 chars");
+		if (base64.length() != 22) {
+			throw new IllegalArgumentException("base64 uuid is expected to have 22 chars");
 		}
-		final byte[] ba = Base64.getDecoder().decode(base64);
+		final byte[] ba = new byte[2 * Long.BYTES];
+		Base64.getDecoder().decode(base64.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), ba);
 		return new UUID(bytesToLong(ba, 0), bytesToLong(ba, Long.BYTES));
 	}
 

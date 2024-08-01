@@ -38,7 +38,7 @@ public class ConvertMQMessageAction extends Action {
 				}
 				// TODO: How to tell if this is a Topic?
 				message.putVariableIfNotNull(ESBConstants.QueueName, mqMessageParser.getJMSDestination());
-				message.prepareContent();
+				message.prepareContent(context);
 			}			
 		}
 		return null;

@@ -22,10 +22,10 @@ import javax.servlet.http.HttpServletResponse;
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
+import com.artofarc.esb.http.Http1UrlSelector;
 import com.artofarc.esb.http.HttpCheckAlive;
 import com.artofarc.esb.http.HttpEndpoint;
 import com.artofarc.esb.http.HttpUrl;
-import com.artofarc.esb.http.HttpUrlSelector;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
@@ -46,7 +46,7 @@ public class HTTPConnectionTestAction extends Action {
 			for (int i = 0; i < httpEndpoint.getHttpUrls().size(); ++i) {
 				try {
 					HttpUrl httpUrl = httpEndpoint.getHttpUrls().get(i);
-					if (HttpUrlSelector.checkAlive(httpEndpoint, httpUrl, httpCheckAlive)) {
+					if (Http1UrlSelector.checkAlive(httpEndpoint, httpUrl, httpCheckAlive)) {
 						message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
 						return;
 					}
