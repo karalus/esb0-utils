@@ -227,6 +227,8 @@ public class BrowseQueueAction extends Action {
 				}
 			} else if (value instanceof Number) {
 				jsonGenerator.write(key, ((Number) value).longValue());
+			} else if (value instanceof Boolean) {
+				jsonGenerator.write(key, ((Boolean) value));
 			} else if (value != null) {
 				jsonGenerator.write(key, value.toString());
 			} else {
