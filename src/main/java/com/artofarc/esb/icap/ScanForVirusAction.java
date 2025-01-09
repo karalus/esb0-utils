@@ -36,7 +36,7 @@ public class ScanForVirusAction extends Action {
 		icapConnectionData = new ICAPConnectionData(properties.getProperty("ICAPRemoteHost"), properties.getProperty("ICAPRemotePort"), properties.getProperty("ICAPRemoteURI"));
 		String iCAPMaxIdleTime = properties.getProperty("ICAPMaxIdleTime");
 		maxIdleTime = iCAPMaxIdleTime != null ? Integer.valueOf(iCAPMaxIdleTime) : null;
-		scanEngine = (ICAP.ScanEngine) classLoader.loadClass(properties.getProperty("ICAPScanEngine", "com.artofarc.esb.icap.ICAP$ScanEngine")).newInstance();
+		scanEngine = (ICAP.ScanEngine) classLoader.loadClass(properties.getProperty("ICAPScanEngine", "com.artofarc.esb.icap.ICAP$ScanEngine")).getDeclaredConstructor().newInstance();
 	}
 
 	@Override

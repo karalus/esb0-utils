@@ -35,7 +35,6 @@ import com.artofarc.esb.http.HttpConstants;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.util.ByteArrayOutputStream;
-import com.artofarc.util.IOUtils;
 
 public class HeapDumpAction extends Action {
 
@@ -97,7 +96,7 @@ public class HeapDumpAction extends Action {
 	private void zipHeapDump(File tempFileHprof, OutputStream os) throws IOException {
 		try (FileInputStream fis = new FileInputStream(tempFileHprof); ZipOutputStream zos = new ZipOutputStream(os)) {
 			zos.putNextEntry(new ZipEntry(fileName + ".hprof"));
-			IOUtils.copy(fis, zos);
+			fis.transferTo(zos);
 		} finally {
 			tempFileHprof.delete();
 		}

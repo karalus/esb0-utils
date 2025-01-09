@@ -51,7 +51,7 @@ public class DumpArtifactAction extends Action {
 			ZipEntry zipEntry = new ZipEntry(artifact.getURI().substring(1));
 			zipEntry.setTime(artifact.getModificationTime());
 			zos.putNextEntry(zipEntry);
-			IOUtils.copy(artifact.getContentAsStream(), zos);
+			artifact.getContentAsStream().transferTo(zos);
 			for (String referenced : artifact.getReferenced()) {
 				dumpArtifact(zos, artifact.getArtifact(referenced), done);
 			}
