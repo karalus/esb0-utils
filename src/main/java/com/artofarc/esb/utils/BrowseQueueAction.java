@@ -29,7 +29,6 @@ import javax.jms.MessageConsumer;
 import javax.jms.QueueBrowser;
 import javax.jms.TextMessage;
 import javax.json.stream.JsonGenerator;
-import javax.servlet.http.HttpServletResponse;
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.StreamResult;
@@ -122,7 +121,7 @@ public class BrowseQueueAction extends Action {
 			}
 			break;
 		default:
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+			message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_METHOD_NOT_ALLOWED);
 			throw new ExecutionException(this, method);
 		}
 	}

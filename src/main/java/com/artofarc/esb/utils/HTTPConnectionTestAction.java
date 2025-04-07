@@ -17,13 +17,12 @@ package com.artofarc.esb.utils;
 
 import java.io.IOException;
 
-import javax.servlet.http.HttpServletResponse;
-
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.http.Http1UrlSelector;
 import com.artofarc.esb.http.HttpCheckAlive;
+import com.artofarc.esb.http.HttpConstants;
 import com.artofarc.esb.http.HttpEndpoint;
 import com.artofarc.esb.http.HttpUrl;
 import com.artofarc.esb.message.BodyType;
@@ -47,7 +46,7 @@ public class HTTPConnectionTestAction extends Action {
 				try {
 					HttpUrl httpUrl = httpEndpoint.getHttpUrls().get(i);
 					if (Http1UrlSelector.checkAlive(httpEndpoint, httpUrl, httpCheckAlive)) {
-						message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
+						message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NO_CONTENT);
 						return;
 					}
 					lastException = new HttpCheckAlive.ConnectException(httpUrl.getUrlStr() + " is not alive.");
@@ -55,10 +54,10 @@ public class HTTPConnectionTestAction extends Action {
 					lastException = e;
 				}
 			}
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_BAD_GATEWAY);
+			message.putVariable(ESBConstants.HttpResponseCode, 502 /* SC_BAD_GATEWAY */);
 			message.reset(BodyType.EXCEPTION, lastException);
 		} else {
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NOT_FOUND);
+			message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NOT_FOUND);
 		}
 	}
 

@@ -17,7 +17,6 @@ package com.artofarc.esb.utils;
 
 import javax.json.JsonReader;
 import javax.json.JsonString;
-import javax.servlet.http.HttpServletResponse;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.artifact.DeployHelper;
@@ -58,20 +57,20 @@ public class GlobalPropertyAction extends Action {
 						}
 					});
 				}
-				message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
+				message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NO_CONTENT);
 			} else {
-				message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+				message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_UNSUPPORTED_MEDIA_TYPE);
 			}
 			message.reset(BodyType.INVALID, null);
 			break;
 		case "COPY":
 			DeployHelper.deployChangeSet(globalContext, globalContext.getFileSystem().init(globalContext));
 			message.reset(BodyType.INVALID, null);
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NO_CONTENT);
+			message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NO_CONTENT);
 			break;
 		default:
 			message.reset(BodyType.INVALID, null);
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+			message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_METHOD_NOT_ALLOWED);
 			break;
 		}
 	}

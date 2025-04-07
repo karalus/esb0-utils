@@ -26,14 +26,13 @@ import javax.json.stream.JsonGenerator;
 import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
-import static javax.servlet.http.HttpServletResponse.*;
 
 import com.artofarc.esb.action.Action;
 import com.artofarc.esb.action.ExecutionException;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.context.GlobalContext;
-import com.artofarc.esb.http.HttpConstants;
+import static com.artofarc.esb.http.HttpConstants.*;
 import com.artofarc.esb.message.BodyType;
 import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
@@ -76,7 +75,7 @@ public class MBeanAction extends Action {
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
 		message.clearHeaders();
-		if (HttpConstants.isNotJSON(message.getContentType())) {
+		if (isNotJSON(message.getContentType())) {
 			throw httpError(message, SC_UNSUPPORTED_MEDIA_TYPE, message.getContentType(), null);
 		}
 		String name = message.getVariable("objectName");
@@ -176,7 +175,7 @@ public class MBeanAction extends Action {
 			message.putVariable(ESBConstants.HttpResponseCode, SC_NO_CONTENT);
 			message.reset(BodyType.INVALID, null);
 		} else {
-			message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_TYPE, HttpConstants.HTTP_HEADER_CONTENT_TYPE_JSON);
+			message.putHeader(HTTP_HEADER_CONTENT_TYPE, HTTP_HEADER_CONTENT_TYPE_JSON);
 			message.reset(BodyType.STRING, JSONB.toJson(result));
 		}
 	}

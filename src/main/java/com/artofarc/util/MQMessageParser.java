@@ -18,6 +18,7 @@ package com.artofarc.util;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,8 +31,8 @@ import com.ibm.mq.headers.MQRFH2;
 public final class MQMessageParser {
 
 	private static final int MQHRF2_SEARCH_WINDOW = 512;
-	private static final KMPInputStream.Pattern MQHRF2 = new KMPInputStream.Pattern("MQHRF2".getBytes());
-	private static final KMPInputStream.Pattern RFH = new KMPInputStream.Pattern("RFH ".getBytes());
+	private static final KMPInputStream.Pattern MQHRF2 = new KMPInputStream.Pattern("MQHRF2".getBytes(StandardCharsets.US_ASCII));
+	private static final KMPInputStream.Pattern RFH = new KMPInputStream.Pattern("RFH ".getBytes(StandardCharsets.US_ASCII));
 
 	public static final boolean isMQMessage(Message message) throws JMSException {
 		return message.propertyExists("JMS_IBM_Format");

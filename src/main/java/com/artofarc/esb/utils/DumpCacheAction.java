@@ -16,7 +16,6 @@
 package com.artofarc.esb.utils;
 
 import javax.json.stream.JsonGenerator;
-import javax.servlet.http.HttpServletResponse;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xquery.XQItem;
@@ -32,7 +31,6 @@ import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.esb.resource.LRUCacheWithExpirationFactory;
 import com.artofarc.util.JsonValueGenerator;
-import com.artofarc.util.ReflectionUtils;
 import com.artofarc.util.StringBuilderWriter;
 
 public class DumpCacheAction extends Action {
@@ -60,11 +58,11 @@ public class DumpCacheAction extends Action {
 				factory.getResource(cacheName).clear();
 				return new ExecutionContext("cache purged: " + cacheName);
 			default:
-				message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+				message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_METHOD_NOT_ALLOWED);
 				return new ExecutionContext("method not allowed: " + method);
 			}
 		} else {
-			message.putVariable(ESBConstants.HttpResponseCode, HttpServletResponse.SC_NOT_FOUND);
+			message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NOT_FOUND);
 			return new ExecutionContext("cache not found: " + cacheName);
 		}
 	}
@@ -94,12 +92,10 @@ public class DumpCacheAction extends Action {
 
 	public static void writeJson(Context context, JsonGenerator jsonGenerator, LRUCacheWithExpirationFactory<Object, Object[]>.Cache cache) throws Exception {
 		jsonGenerator.writeStartObject();
-		for (Object expiration : cache.getExpirations()) {
-			// TODO: Use better API
-			String key = ReflectionUtils.getField(expiration, "_key");
+		for (Object key : cache.keySet()) {
 			Object[] values = cache.get(key);
 			if (values != null) {
-				jsonGenerator.writeKey(key);
+				jsonGenerator.writeKey(key.toString());
 				if (values.length == 1) {
 					writeJson(context, jsonGenerator, values[0]);
 				} else {
