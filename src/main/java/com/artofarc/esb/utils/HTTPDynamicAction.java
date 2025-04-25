@@ -37,14 +37,7 @@ public class HTTPDynamicAction extends Action {
 		for (HttpUrl httpUrl : httpEndpoint.getHttpUrls()) {
 			httpUrls.add(new HttpUrl(httpUrl.getBaseUrl() + path, httpUrl.getWeight(), httpUrl.isActive()));
 		}
-		// TODO: Better constructor available in recent esb0
-		String username = null, password = null;
-		if (basicAuthCredential != null) {
-			int i = basicAuthCredential.indexOf(':');
-			username = basicAuthCredential.substring(0, i);
-			password = basicAuthCredential.substring(i + 1);
-		}
-		return new HttpEndpoint(null, httpUrls, httpEndpoint.isMultiThreaded(), username, password, httpEndpoint.getConnectTimeout(), httpEndpoint.getRetries(),
+		return new HttpEndpoint(null, httpUrls, httpEndpoint.isMultiThreaded(), basicAuthCredential, httpEndpoint.getConnectTimeout(), httpEndpoint.getRetries(),
 				httpEndpoint.getCheckAliveInterval(), httpEndpoint.getHttpCheckAlive(), System.currentTimeMillis(), httpEndpoint.getProxy(), httpEndpoint.getSSLContext(),
 				httpEndpoint.getVersion());
 	}

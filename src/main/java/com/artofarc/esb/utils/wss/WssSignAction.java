@@ -35,14 +35,16 @@ import com.artofarc.esb.message.ESBMessage;
 public class WssSignAction extends WssAction {
 
 	private final ArrayList<WSEncryptionPart> parts = new ArrayList<>();
+	private final boolean signAttachments;
 
 	public WssSignAction(ClassLoader classLoader, Properties properties) throws Exception {
 		super(classLoader, properties);
 		String[] signatureParts = properties.getProperty("signatureParts").split(",");
 		for (String signaturePart : signatureParts) {
 			QName qName = QName.valueOf(signaturePart);
-			parts.add(new WSEncryptionPart(qName.getLocalPart(), qName.getNamespaceURI(), ""));
+			parts.add(new WSEncryptionPart(qName.getLocalPart(), qName.getNamespaceURI(), "Element"));
 		}
+		signAttachments = Boolean.parseBoolean(properties.getProperty("signAttachments", "true"));
 	}
 
 	@Override
@@ -57,6 +59,10 @@ public class WssSignAction extends WssAction {
 		builder.setDigestAlgo(WSConstants.SHA256);
 		builder.setAddInclusivePrefixes(false);
 		builder.getParts().addAll(parts);
+		if (signAttachments && message.getAttachments().size() > 0) {
+			builder.getParts().add(new WSEncryptionPart("cid:Attachments", "Content"));
+			builder.setAttachmentCallbackHandler(new AttachmentCallbackHandler(message.getAttachments()));
+		}
 		Document document = builder.build(crypto);
 		message.reset(BodyType.DOM, document);
 		return new ExecutionContext(document);
