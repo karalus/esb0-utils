@@ -36,6 +36,7 @@ public class WssSignAction extends WssAction {
 
 	private final ArrayList<WSEncryptionPart> parts = new ArrayList<>();
 	private final boolean signAttachments;
+	private final String signAttachmentsMod;
 
 	public WssSignAction(ClassLoader classLoader, Properties properties) throws Exception {
 		super(classLoader, properties);
@@ -45,6 +46,7 @@ public class WssSignAction extends WssAction {
 			parts.add(new WSEncryptionPart(qName.getLocalPart(), qName.getNamespaceURI(), "Element"));
 		}
 		signAttachments = Boolean.parseBoolean(properties.getProperty("signAttachments", "true"));
+		signAttachmentsMod = Boolean.parseBoolean(properties.getProperty("signAttachmentsComplete")) ? "Element" : "Content";
 	}
 
 	@Override
@@ -60,7 +62,7 @@ public class WssSignAction extends WssAction {
 		builder.setAddInclusivePrefixes(false);
 		builder.getParts().addAll(parts);
 		if (signAttachments && message.getAttachments().size() > 0) {
-			builder.getParts().add(new WSEncryptionPart("cid:Attachments", "Content"));
+			builder.getParts().add(new WSEncryptionPart("cid:Attachments", signAttachmentsMod));
 			builder.setAttachmentCallbackHandler(new AttachmentCallbackHandler(message.getAttachments()));
 		}
 		Document document = builder.build(crypto);
