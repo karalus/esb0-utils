@@ -29,6 +29,7 @@ import org.apache.wss4j.common.ext.WSPasswordCallback;
 import org.apache.wss4j.dom.WSConstants;
 import org.apache.wss4j.dom.engine.WSSecurityEngine;
 import org.apache.wss4j.dom.engine.WSSecurityEngineResult;
+import org.apache.wss4j.dom.handler.RequestData;
 import org.apache.wss4j.dom.handler.WSHandlerResult;
 import org.w3c.dom.Document;
 
@@ -55,14 +56,14 @@ public class WssVerifyAction extends WssAction implements CallbackHandler {
 
 	@Override
 	public void handle(Callback[] callbacks) throws UnsupportedCallbackException {
-		for (int i = 0; i < callbacks.length; i++) {
-			if (callbacks[i] instanceof WSPasswordCallback) {
-				WSPasswordCallback pc = (WSPasswordCallback) callbacks[i];
+		for (Callback callback : callbacks) {
+			if (callback instanceof WSPasswordCallback) {
+				WSPasswordCallback pc = (WSPasswordCallback) callback;
 				if (user.equals(pc.getIdentifier())) {
 					pc.setPassword(password);
 				}
 			} else {
-				throw new UnsupportedCallbackException(callbacks[i], "Unrecognized Callback");
+				throw new UnsupportedCallbackException(callback, "Unrecognized Callback");
 			}
 		}
 	}
@@ -71,7 +72,14 @@ public class WssVerifyAction extends WssAction implements CallbackHandler {
 	protected ExecutionContext prepare(Context context, ESBMessage message, boolean inPipeline) throws Exception {
 		DOMResult domResult = new DOMResult();
 		context.transformRaw(message.getBodyAsSource(context), domResult);
-		WSHandlerResult result = secEngine.processSecurityHeader((Document) domResult.getNode(), null, this, crypto);
+		RequestData requestData = new RequestData();
+		requestData.setDecCrypto(crypto);
+		requestData.setSigVerCrypto(crypto);
+		requestData.setCallbackHandler(this);
+		if (message.getAttachments().size() > 0) {
+			requestData.setAttachmentCallbackHandler(new AttachmentCallbackHandler(message.getAttachments()));
+		}
+		WSHandlerResult result = secEngine.processSecurityHeader((Document) domResult.getNode(), requestData);
 		List<WSSecurityEngineResult> results = result.getActionResults().get(WSConstants.SIGN);
 		if (results.isEmpty()) {
 			throw new ExecutionException(this, "Message not signed");
