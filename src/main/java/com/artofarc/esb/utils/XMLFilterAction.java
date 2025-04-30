@@ -23,17 +23,26 @@ import org.xml.sax.XMLReader;
 import com.artofarc.esb.action.SAXAction;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.message.ESBMessage;
+import com.artofarc.esb.message.RichSource;
 import com.artofarc.util.XMLFilterBase;
 
 public abstract class XMLFilterAction extends SAXAction {
 
 	protected abstract XMLFilterBase createXMLFilter(Context context, ESBMessage message) throws Exception;
 
+	@Deprecated
 	@Override
 	protected SAXSource createSAXSource(Context context, ESBMessage message, XQItem item) throws Exception {
 		XMLFilterBase xmlFilter = createXMLFilter(context, message);
 		xmlFilter.setParent(new XQJFilter(item));
 		return new SAXSource(xmlFilter, null);
+	}
+
+	@Override
+	protected RichSource createSource(Context context, ESBMessage message, XQItem item) throws Exception {
+		XMLFilterBase xmlFilter = createXMLFilter(context, message);
+		xmlFilter.setParent(new XQJFilter(item));
+		return new RichSource(new SAXSource(xmlFilter, null), item, null);
 	}
 
 	@Override

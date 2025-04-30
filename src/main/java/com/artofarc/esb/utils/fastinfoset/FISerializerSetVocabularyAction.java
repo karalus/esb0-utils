@@ -26,6 +26,7 @@ import com.artofarc.esb.action.SAXAction;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.context.ExecutionContext;
 import com.artofarc.esb.message.ESBMessage;
+import com.artofarc.esb.message.RichSource;
 import com.artofarc.esb.resource.SchemaAwareFISerializerFactory;
 import com.artofarc.util.SchemaAwareFastInfosetSerializer;
 import com.artofarc.util.XMLFilterBase;
@@ -55,10 +56,17 @@ public class FISerializerSetVocabularyAction extends SAXAction {
 		return super.prepare(context, message, inPipeline);
 	}
 
+	@Deprecated
 	@Override
 	protected SAXSource createSAXSource(Context context, ESBMessage message, XQItem item) throws Exception {
 		SAXSource source = new SAXSource(new XQJFilter(item), null);
 		return beautify ? new SAXSource(context.createNamespaceBeautifier(source), null) : source;
+	}
+
+	@Override
+	protected RichSource createSource(Context context, ESBMessage message, XQItem item) throws Exception {
+		SAXSource source = new SAXSource(new XQJFilter(item), null);
+		return new RichSource(beautify ? new SAXSource(context.createNamespaceBeautifier(source), null) : source, item, null);
 	}
 
 	@Override

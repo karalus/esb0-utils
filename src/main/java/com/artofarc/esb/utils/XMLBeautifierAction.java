@@ -23,13 +23,20 @@ import org.xml.sax.XMLReader;
 import com.artofarc.esb.action.SAXAction;
 import com.artofarc.esb.context.Context;
 import com.artofarc.esb.message.ESBMessage;
+import com.artofarc.esb.message.RichSource;
 import com.artofarc.util.XMLFilterBase;
 
 public class XMLBeautifierAction extends SAXAction {
 
+	@Deprecated
 	@Override
 	protected SAXSource createSAXSource(Context context, ESBMessage message, XQItem item) throws Exception {
 		return new SAXSource(context.createNamespaceBeautifier(new SAXSource(new XQJFilter(item), null)), null);
+	}
+
+	@Override
+	protected RichSource createSource(Context context, ESBMessage message, XQItem item) throws Exception {
+		return new RichSource(new SAXSource(context.createNamespaceBeautifier(new SAXSource(new XQJFilter(item), null)), null), item, null);
 	}
 
 	@Override
