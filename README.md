@@ -14,6 +14,9 @@ Compress XML messages with [Fast Infoset](https://en.wikipedia.org/wiki/Fast_Inf
 ### ICAP ###
 Implementation of the ICAP protocol to be used with virus scanners to check binaries while processing messages.
 
+### SFTP ###
+Adapter to allow for connecting to an SFTP server. Supports POST, GET and DELETE for files as well as listing a directory as JSON output. Depends on [Jsch](https://github.com/mwiede/jsch).
+
 ### Miscellaneous ###
 - Browse JMS queue (convert messages to JSON), purge queue, supports decoding of Fast Infoset, supports parsing of Messages with JMS_IBM_Format
 - Dump contents of a cache as JSON, purge/delete cache
