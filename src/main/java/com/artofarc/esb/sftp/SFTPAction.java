@@ -19,14 +19,14 @@ import com.artofarc.esb.message.ESBConstants;
 import com.artofarc.esb.message.ESBMessage;
 import com.artofarc.esb.message.MimeHelper;
 import com.artofarc.util.JsonFactoryHelper;
-import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.SftpException;
 
 public class SFTPAction extends Action {
 
 	private final SFTPConnectionData connectionData;
-	private final SFTPSessionData sessionData;
-	private final String remoteDir;
+	private final String user, host, remoteDir;
+	private final int port, connectTimeout, serverAliveInterval;
 
 	private static String getRequiredProperty(Properties properties, String key) {
 		String value = properties.getProperty(key);
@@ -40,19 +40,25 @@ public class SFTPAction extends Action {
 		_pipelineStop = true;
 		String identityPassword = properties.getProperty("identityPassword");
 		connectionData = new SFTPConnectionData(getRequiredProperty(properties, "knownHostsFile"), getRequiredProperty(properties, "identityFile"), identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
-		sessionData = new SFTPSessionData(getRequiredProperty(properties, "user"), getRequiredProperty(properties, "host"), Integer.parseInt(properties.getProperty("port", "22")),
-				Integer.parseInt(properties.getProperty("connectTimeout", "10000")), Integer.parseInt(properties.getProperty("serverAliveInterval", "0")));
+		user = getRequiredProperty(properties, "user");
+		host = getRequiredProperty(properties, "host");
+		port = Integer.parseInt(properties.getProperty("port", "22"));
+		connectTimeout = Integer.parseInt(properties.getProperty("connectTimeout", "10000"));
+		serverAliveInterval = Integer.parseInt(properties.getProperty("serverAliveInterval", "0"));
 		remoteDir = properties.getProperty("remoteDir");
 	}
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
+		String sftpUser = (String) eval(user, context, message);
+		String sftpRemoteDir = remoteDir != null ? (String) eval(remoteDir, context, message) : null;
 		SFTPConnectionFactory connectionFactory = context.getGlobalContext().getResourceFactory(SFTPConnectionFactory.class);
 		SFTPConnection connection = connectionFactory.getResource(connectionData);
 		SFTPSessionFactory sessionFactory = context.getResourceFactory(SFTPSessionFactory.class);
+		SFTPSessionData sessionData = new SFTPSessionData(sftpUser, host, port, connectTimeout, serverAliveInterval);
 		SFTPSession session = sessionFactory.getResource(sessionData, connection);
-		if (remoteDir != null && !session.channelSftp.pwd().equals(remoteDir)) {
-			session.channelSftp.cd(remoteDir);
+		if (sftpRemoteDir != null && !session.channelSftp.pwd().equals(sftpRemoteDir)) {
+			session.channelSftp.cd(sftpRemoteDir);
 		}
 		message.clearHeaders();
 		String verb = message.getVariable(ESBConstants.HttpMethod);
@@ -60,16 +66,16 @@ public class SFTPAction extends Action {
 		if (filename != null && !filename.isEmpty()) {
 			switch (verb) {
 			case "GET":
-				message.setContentType(MimeHelper.guessContentTypeFromName(filename));
-				message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION, "filename=\"" + filename + '"');
 				try {
 					message.reset(BodyType.INPUT_STREAM, session.channelSftp.get(filename));
 				} catch (SftpException e) {
-					if (e.id == 2) {
+					if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
 						throw new FileNotFoundException(sessionData + (remoteDir != null ? remoteDir : "~") + "/" + filename);
 					} 
 					throw e;
 				}
+				message.setContentType(MimeHelper.guessContentTypeFromName(filename));
+				message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION, "filename=\"" + filename + '"');
 				break;
 			case "POST":
 				try (OutputStream os = session.channelSftp.put(filename)) {
@@ -87,7 +93,7 @@ public class SFTPAction extends Action {
 			switch (verb) {
 			case "GET":
 				JsonArrayBuilder builder = JsonFactoryHelper.JSON_BUILDER_FACTORY.createArrayBuilder();
-				for (LsEntry lsEntry : session.channelSftp.ls(".")) {
+				for (ChannelSftp.LsEntry lsEntry : session.channelSftp.ls(".")) {
 					builder.add(JsonFactoryHelper.JSON_BUILDER_FACTORY.createObjectBuilder().add("name", lsEntry.getFilename()).add("dir", lsEntry.getAttrs().isDir())
 							.add("length", lsEntry.getAttrs().getSize()).add("modificationTime", lsEntry.getAttrs().getMtimeString()).build());
 				}
