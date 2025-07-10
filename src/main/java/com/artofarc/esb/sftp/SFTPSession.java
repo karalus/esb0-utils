@@ -10,6 +10,7 @@ public class SFTPSession implements AutoCloseable {
 
 	public SFTPSession(SFTPConnection connection, SFTPSessionData sessionData) throws JSchException {
 		Session session = connection.jsch.getSession(sessionData.getUser(), sessionData.getHost(), sessionData.getPort());
+		session.setConfig("StrictHostKeyChecking", "no");
 		session.connect(sessionData.getConnectTimeout());
 		session.setServerAliveInterval(sessionData.getServerAliveInterval());
 		try {

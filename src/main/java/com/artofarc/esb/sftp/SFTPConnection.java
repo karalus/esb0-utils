@@ -10,7 +10,9 @@ public class SFTPConnection implements AutoCloseable {
 	public SFTPConnection(SFTPConnectionData connectionData) throws JSchException {
 		jsch = new JSch();
 		jsch.addIdentity(connectionData.getIdentityFile(), connectionData.getIdentityPassword());
-		jsch.setKnownHosts(connectionData.getKnownHostsFile());
+		if (connectionData.getKnownHostsFile() != null) {
+			jsch.setKnownHosts(connectionData.getKnownHostsFile());
+		}
 	}
 
 	@Override

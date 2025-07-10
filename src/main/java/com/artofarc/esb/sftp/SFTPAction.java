@@ -15,6 +15,7 @@
  */
 package com.artofarc.esb.sftp;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -51,11 +52,14 @@ public class SFTPAction extends Action {
 		return value;
 	}
 
-	public SFTPAction(ClassLoader classLoader, Properties properties) {
+	public SFTPAction(ClassLoader classLoader, Properties properties) throws FileNotFoundException {
 		_pipelineStop = true;
+		String identityFile = getRequiredProperty(properties, "identityFile");
+		if (!new File(identityFile).exists()) {
+			throw new FileNotFoundException(identityFile);
+		}
 		String identityPassword = properties.getProperty("identityPassword");
-		connectionData = new SFTPConnectionData(getRequiredProperty(properties, "knownHostsFile"), getRequiredProperty(properties, "identityFile"),
-				identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
+		connectionData = new SFTPConnectionData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
 		user = getRequiredProperty(properties, "user");
 		host = getRequiredProperty(properties, "host");
 		port = Integer.parseInt(properties.getProperty("port", "22"));
