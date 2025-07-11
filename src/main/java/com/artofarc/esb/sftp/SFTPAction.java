@@ -42,7 +42,7 @@ public class SFTPAction extends Action {
 
 	private final SFTPConnectionData connectionData;
 	private final String user, host, remoteDir;
-	private final int port, connectTimeout, serverAliveInterval;
+	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
 	private static String getRequiredProperty(Properties properties, String key) {
 		String value = properties.getProperty(key);
@@ -64,6 +64,7 @@ public class SFTPAction extends Action {
 		host = getRequiredProperty(properties, "host");
 		port = Integer.parseInt(properties.getProperty("port", "22"));
 		connectTimeout = Integer.parseInt(properties.getProperty("connectTimeout", "10000"));
+		serverAliveCountMax = Integer.parseInt(properties.getProperty("serverAliveCountMax", "1"));
 		serverAliveInterval = Integer.parseInt(properties.getProperty("serverAliveInterval", "0"));
 		remoteDir = properties.getProperty("remoteDir");
 	}
@@ -75,7 +76,7 @@ public class SFTPAction extends Action {
 		SFTPConnectionFactory connectionFactory = context.getGlobalContext().getResourceFactory(SFTPConnectionFactory.class);
 		SFTPConnection connection = connectionFactory.getResource(connectionData);
 		SFTPSessionFactory sessionFactory = context.getResourceFactory(SFTPSessionFactory.class);
-		SFTPSessionData sessionData = new SFTPSessionData(sftpUser, host, port, connectTimeout, serverAliveInterval);
+		SFTPSessionData sessionData = new SFTPSessionData(sftpUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
 		SFTPSession session = sessionFactory.getResource(sessionData, connection);
 		String sftpURL = sessionData + (sftpRemoteDir != null ? sftpRemoteDir : "~");
 		message.clearHeaders();

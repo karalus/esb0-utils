@@ -6,13 +6,14 @@ public final class SFTPSessionData {
 
 	private final String user;
 	private final String host;
-	private final int port, connectTimeout, serverAliveInterval;
+	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
-	public SFTPSessionData(String user, String host, int port, int connectTimeout, int serverAliveInterval) {
+	public SFTPSessionData(String user, String host, int port, int connectTimeout, int serverAliveCountMax, int serverAliveInterval) {
 		this.user = user;
 		this.host = host;
 		this.port = port;
 		this.connectTimeout = connectTimeout;
+		this.serverAliveCountMax = serverAliveCountMax;
 		this.serverAliveInterval = serverAliveInterval;
 	}
 
@@ -30,6 +31,10 @@ public final class SFTPSessionData {
 
 	public int getConnectTimeout() {
 		return connectTimeout;
+	}
+
+	public int getServerAliveCountMax() {
+		return serverAliveCountMax;
 	}
 
 	public int getServerAliveInterval() {

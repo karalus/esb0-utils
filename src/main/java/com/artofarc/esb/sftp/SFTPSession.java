@@ -13,6 +13,7 @@ public class SFTPSession implements AutoCloseable {
 		session.setConfig("StrictHostKeyChecking", "no");
 		session.connect(sessionData.getConnectTimeout());
 		session.setServerAliveInterval(sessionData.getServerAliveInterval());
+		session.setServerAliveCountMax(sessionData.getServerAliveCountMax());
 		try {
 			channelSftp = (ChannelSftp) session.openChannel("sftp");
 			channelSftp.connect(sessionData.getConnectTimeout());
