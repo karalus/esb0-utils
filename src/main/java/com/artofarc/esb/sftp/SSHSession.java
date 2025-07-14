@@ -24,10 +24,10 @@ public class SSHSession implements AutoCloseable {
 
 	public SSHSession(SSHConfiguration configuration, SSHSessionData sessionData) throws JSchException {
 		session = configuration.getJSch().getSession(sessionData.getUser(), sessionData.getHost(), sessionData.getPort());
-		getSession().setConfig("StrictHostKeyChecking", "no");
-		getSession().connect(sessionData.getConnectTimeout());
-		getSession().setServerAliveInterval(sessionData.getServerAliveInterval());
-		getSession().setServerAliveCountMax(sessionData.getServerAliveCountMax());
+		session.setConfig("StrictHostKeyChecking", "no");
+		session.connect(sessionData.getConnectTimeout());
+		session.setServerAliveInterval(sessionData.getServerAliveInterval());
+		session.setServerAliveCountMax(sessionData.getServerAliveCountMax());
 	}
 
 	protected Session getSession() {
@@ -36,7 +36,7 @@ public class SSHSession implements AutoCloseable {
 
 	@Override
 	public void close() {
-		getSession().disconnect();
+		session.disconnect();
 	}
 
 }

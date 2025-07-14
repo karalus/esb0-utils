@@ -25,7 +25,7 @@ public class SFTPChannel implements AutoCloseable {
 
 	public SFTPChannel(Session session, SSHSessionData sessionData) throws JSchException {
 		channelSftp = (ChannelSftp) session.openChannel("sftp");
-		getChannelSftp().connect(sessionData.getConnectTimeout());
+		channelSftp.connect(sessionData.getConnectTimeout());
 	}
 
 	protected ChannelSftp getChannelSftp() {
@@ -34,7 +34,7 @@ public class SFTPChannel implements AutoCloseable {
 
 	@Override
 	public void close() {
-		getChannelSftp().disconnect();
+		channelSftp.disconnect();
 	}
 
 }

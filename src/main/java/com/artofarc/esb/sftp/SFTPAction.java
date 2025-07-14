@@ -40,7 +40,7 @@ import com.jcraft.jsch.SftpException;
 
 public class SFTPAction extends Action {
 
-	private final SSHConfigurationData configuration;
+	private final SSHConfigurationData configurationData;
 	private final String user, host, remoteDir;
 	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
@@ -59,7 +59,7 @@ public class SFTPAction extends Action {
 			throw new FileNotFoundException(identityFile);
 		}
 		String identityPassword = properties.getProperty("identityPassword");
-		configuration = new SSHConfigurationData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
+		configurationData = new SSHConfigurationData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
 		user = getRequiredProperty(properties, "user");
 		host = getRequiredProperty(properties, "host");
 		port = Integer.parseInt(properties.getProperty("port", "22"));
@@ -71,13 +71,13 @@ public class SFTPAction extends Action {
 
 	@Override
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
-		String sftpUser = (String) eval(user, context, message);
+		String sshUser = (String) eval(user, context, message);
 		String sftpRemoteDir = remoteDir != null ? (String) eval(remoteDir, context, message) : null;
-		SSHConfigurationFactory connectionFactory = context.getGlobalContext().getResourceFactory(SSHConfigurationFactory.class);
-		SSHConfiguration connection = connectionFactory.getResource(configuration);
+		SSHConfigurationFactory configurationFactory = context.getGlobalContext().getResourceFactory(SSHConfigurationFactory.class);
+		SSHConfiguration configuration = configurationFactory.getResource(configurationData);
 		SSHSessionFactory sessionFactory = context.getPoolContext().getResourceFactory(SSHSessionFactory.class);
-		SSHSessionData sessionData = new SSHSessionData(sftpUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
-		SSHSession session = sessionFactory.getResource(sessionData, connection);
+		SSHSessionData sessionData = new SSHSessionData(sshUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
+		SSHSession session = sessionFactory.getResource(sessionData, configuration);
 		SFTPChannelFactory channelFactory = context.getResourceFactory(SFTPChannelFactory.class);
 		SFTPChannel channel = channelFactory.getResource(session, sessionData);
 		String sftpURL = sessionData + (sftpRemoteDir != null ? sftpRemoteDir : "~");
