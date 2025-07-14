@@ -40,7 +40,7 @@ import com.jcraft.jsch.SftpException;
 
 public class SFTPAction extends Action {
 
-	private final SFTPConnectionData connectionData;
+	private final SSHConfigurationData configuration;
 	private final String user, host, remoteDir;
 	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
@@ -59,7 +59,7 @@ public class SFTPAction extends Action {
 			throw new FileNotFoundException(identityFile);
 		}
 		String identityPassword = properties.getProperty("identityPassword");
-		connectionData = new SFTPConnectionData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
+		configuration = new SSHConfigurationData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
 		user = getRequiredProperty(properties, "user");
 		host = getRequiredProperty(properties, "host");
 		port = Integer.parseInt(properties.getProperty("port", "22"));
@@ -73,18 +73,20 @@ public class SFTPAction extends Action {
 	protected void execute(Context context, ExecutionContext execContext, ESBMessage message, boolean nextActionIsPipelineStop) throws Exception {
 		String sftpUser = (String) eval(user, context, message);
 		String sftpRemoteDir = remoteDir != null ? (String) eval(remoteDir, context, message) : null;
-		SFTPConnectionFactory connectionFactory = context.getGlobalContext().getResourceFactory(SFTPConnectionFactory.class);
-		SFTPConnection connection = connectionFactory.getResource(connectionData);
-		SFTPSessionFactory sessionFactory = context.getResourceFactory(SFTPSessionFactory.class);
-		SFTPSessionData sessionData = new SFTPSessionData(sftpUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
-		SFTPSession session = sessionFactory.getResource(sessionData, connection);
+		SSHConfigurationFactory connectionFactory = context.getGlobalContext().getResourceFactory(SSHConfigurationFactory.class);
+		SSHConfiguration connection = connectionFactory.getResource(configuration);
+		SSHSessionFactory sessionFactory = context.getPoolContext().getResourceFactory(SSHSessionFactory.class);
+		SSHSessionData sessionData = new SSHSessionData(sftpUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
+		SSHSession session = sessionFactory.getResource(sessionData, connection);
+		SFTPChannelFactory channelFactory = context.getResourceFactory(SFTPChannelFactory.class);
+		SFTPChannel channel = channelFactory.getResource(session, sessionData);
 		String sftpURL = sessionData + (sftpRemoteDir != null ? sftpRemoteDir : "~");
 		message.clearHeaders();
 		String verb = message.getVariable(ESBConstants.HttpMethod);
 		String filename = message.getVariable(ESBConstants.filename, "");
 		try {
-			if (sftpRemoteDir != null && !session.channelSftp.pwd().equals(sftpRemoteDir)) {
-				session.channelSftp.cd(sftpRemoteDir);
+			if (sftpRemoteDir != null && !channel.getChannelSftp().pwd().equals(sftpRemoteDir)) {
+				channel.getChannelSftp().cd(sftpRemoteDir);
 			}
 			message.putVariable(ESBConstants.HttpURLOutbound, sftpURL);
 			if (filename.isEmpty()) {
@@ -92,7 +94,7 @@ public class SFTPAction extends Action {
 				case "GET":
 					Calendar calendar = DatatypeHelper.getCalendarInstance();
 					JsonArrayBuilder builder = JsonFactoryHelper.JSON_BUILDER_FACTORY.createArrayBuilder();
-					for (ChannelSftp.LsEntry lsEntry : session.channelSftp.ls(".")) {
+					for (ChannelSftp.LsEntry lsEntry : channel.getChannelSftp().ls(".")) {
 						calendar.setTimeInMillis(Integer.toUnsignedLong(lsEntry.getAttrs().getMTime()) * 1000);
 						builder.add(JsonFactoryHelper.JSON_BUILDER_FACTORY.createObjectBuilder().add("name", lsEntry.getFilename()).add("dir", lsEntry.getAttrs().isDir())
 								.add("length", lsEntry.getAttrs().getSize()).add("modificationTime", DatatypeHelper.printDateTime(calendar)).build());
@@ -111,20 +113,20 @@ public class SFTPAction extends Action {
 			} else {
 				switch (verb) {
 				case "GET":
-					message.reset(BodyType.INPUT_STREAM, session.channelSftp.get(filename));
+					message.reset(BodyType.INPUT_STREAM, channel.getChannelSftp().get(filename));
 					String contentType = MimeHelper.guessContentTypeFromName(filename);
 					message.setContentType(contentType != null ? contentType : HttpConstants.HTTP_HEADER_CONTENT_TYPE_OCTET_STREAM);
 					message.putHeader(HttpConstants.HTTP_HEADER_CONTENT_DISPOSITION, "filename=\"" + filename + '"');
 					message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_OK);
 					break;
 				case "POST":
-					try (OutputStream os = session.channelSftp.put(filename)) {
+					try (OutputStream os = channel.getChannelSftp().put(filename)) {
 						message.writeRawTo(os, context);
 					}
 					message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_CREATED);
 					break;
 				case "DELETE":
-					session.channelSftp.rm(filename);
+					channel.getChannelSftp().rm(filename);
 					message.putVariable(ESBConstants.HttpResponseCode, HttpConstants.SC_NO_CONTENT);
 					break;
 				default:
