@@ -19,12 +19,13 @@ import java.util.Objects;
 
 public final class SSHSessionData {
 
-	private final String user;
-	private final String host;
+	private final String user, host;
+	private final byte[] password;
 	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
-	public SSHSessionData(String user, String host, int port, int connectTimeout, int serverAliveCountMax, int serverAliveInterval) {
+	public SSHSessionData(String user, byte[] password, String host, int port, int connectTimeout, int serverAliveCountMax, int serverAliveInterval) {
 		this.user = user;
+		this.password = password;
 		this.host = host;
 		this.port = port;
 		this.connectTimeout = connectTimeout;
@@ -34,6 +35,10 @@ public final class SSHSessionData {
 
 	public String getUser() {
 		return user;
+	}
+
+	public byte[] getPassword() {
+		return password;
 	}
 
 	public String getHost() {

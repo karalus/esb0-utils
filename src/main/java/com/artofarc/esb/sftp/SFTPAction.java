@@ -42,6 +42,7 @@ public class SFTPAction extends Action {
 
 	private final SSHConfigurationData configurationData;
 	private final String user, host, remoteDir;
+	private final byte[] password;
 	private final int port, connectTimeout, serverAliveCountMax, serverAliveInterval;
 
 	private static String getRequiredProperty(Properties properties, String key) {
@@ -52,15 +53,20 @@ public class SFTPAction extends Action {
 		return value;
 	}
 
+	private static byte[] getPasswordProperty(Properties properties, String key) {
+		String password = properties.getProperty(key);
+		return password != null ? password.getBytes(StandardCharsets.UTF_8) : null;
+	}
+
 	public SFTPAction(ClassLoader classLoader, Properties properties) throws FileNotFoundException {
 		_pipelineStop = true;
-		String identityFile = getRequiredProperty(properties, "identityFile");
-		if (!new File(identityFile).exists()) {
+		String identityFile = properties.getProperty("identityFile");
+		if (identityFile != null && !new File(identityFile).exists()) {
 			throw new FileNotFoundException(identityFile);
 		}
-		String identityPassword = properties.getProperty("identityPassword");
-		configurationData = new SSHConfigurationData(properties.getProperty("knownHostsFile"), identityFile, identityPassword != null ? identityPassword.getBytes(StandardCharsets.UTF_8) : null);
+		configurationData = new SSHConfigurationData(properties.getProperty("knownHostsFile"), identityFile, getPasswordProperty(properties, "identityPassword"));
 		user = getRequiredProperty(properties, "user");
+		password = getPasswordProperty(properties, "password");
 		host = getRequiredProperty(properties, "host");
 		port = Integer.parseInt(properties.getProperty("port", "22"));
 		connectTimeout = Integer.parseInt(properties.getProperty("connectTimeout", "10000"));
@@ -76,7 +82,7 @@ public class SFTPAction extends Action {
 		SSHConfigurationFactory configurationFactory = context.getGlobalContext().getResourceFactory(SSHConfigurationFactory.class);
 		SSHConfiguration configuration = configurationFactory.getResource(configurationData);
 		SSHSessionFactory sessionFactory = context.getPoolContext().getResourceFactory(SSHSessionFactory.class);
-		SSHSessionData sessionData = new SSHSessionData(sshUser, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
+		SSHSessionData sessionData = new SSHSessionData(sshUser, password, host, port, connectTimeout, serverAliveCountMax, serverAliveInterval);
 		SSHSession session = sessionFactory.getResource(sessionData, configuration);
 		SFTPChannelFactory channelFactory = context.getResourceFactory(SFTPChannelFactory.class);
 		SFTPChannel channel = channelFactory.getResource(session, sessionData);

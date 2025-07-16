@@ -24,6 +24,9 @@ public class SSHSession implements AutoCloseable {
 
 	public SSHSession(SSHConfiguration configuration, SSHSessionData sessionData) throws JSchException {
 		session = configuration.getJSch().getSession(sessionData.getUser(), sessionData.getHost(), sessionData.getPort());
+		if (sessionData.getPassword() != null) {
+			session.setPassword(sessionData.getPassword());
+		}
 		session.setConfig("StrictHostKeyChecking", "no");
 		session.connect(sessionData.getConnectTimeout());
 		session.setServerAliveInterval(sessionData.getServerAliveInterval());

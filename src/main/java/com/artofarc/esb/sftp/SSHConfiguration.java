@@ -24,7 +24,9 @@ public class SSHConfiguration implements AutoCloseable {
 
 	public SSHConfiguration(SSHConfigurationData connectionData) throws JSchException {
 		jsch = new JSch();
-		jsch.addIdentity(connectionData.getIdentityFile(), connectionData.getIdentityPassword());
+		if (connectionData.getIdentityFile() != null) {
+			jsch.addIdentity(connectionData.getIdentityFile(), connectionData.getIdentityPassword());
+		}
 		if (connectionData.getKnownHostsFile() != null) {
 			jsch.setKnownHosts(connectionData.getKnownHostsFile());
 		}
