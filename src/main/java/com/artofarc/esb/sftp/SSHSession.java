@@ -37,6 +37,16 @@ public class SSHSession implements AutoCloseable {
 		return session;
 	}
 
+	public synchronized int getLocalPortForwardingLport(String host, int rport, int lport) throws JSchException {
+		String suffix = ":" + host + ":" + rport;
+		for (String portForwardingL : session.getPortForwardingL()) {
+			if (portForwardingL.endsWith(suffix)) {
+				return Integer.parseInt(portForwardingL.substring(0, portForwardingL.indexOf(':')));
+			}
+		}
+		return session.setPortForwardingL(lport, host, rport);
+	}
+
 	@Override
 	public void close() {
 		session.disconnect();
