@@ -169,7 +169,7 @@ public class BrowseQueueAction extends Action {
 			jsonGenerator.writeEnd();
 			if (message instanceof BytesMessage) {
 				BytesMessage bytesMessage = (BytesMessage) message;
-				if (_convertBytesMessage != null) {
+				if (_convertBytesMessage != null && bytesMessage.getBodyLength() > 0) {
 					BytesMessageInputStream in = new BytesMessageInputStream(bytesMessage);
 					String contentType = message.getStringProperty("Content_Type");
 					if (MQMessageParser.isMQMessage(message)) {
